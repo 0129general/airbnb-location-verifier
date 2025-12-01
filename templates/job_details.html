@@ -1,0 +1,324 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('queue_dashboard') }}">Queue Dashboard</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Job Details</li>
+        </ol>
+    </nav>
+
+    <!-- Job Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h1 class="h3">
+                    <i class="fas fa-briefcase me-2"></i>Job Details
+                    {% if job.status == 'completed' %}
+                        <span class="badge bg-success ms-2">Completed</span>
+                    {% elif job.status == 'processing' %}
+                        <span class="badge bg-warning ms-2">Processing</span>
+                    {% elif job.status == 'failed' %}
+                        <span class="badge bg-danger ms-2">Failed</span>
+                    {% elif job.status == 'pending' %}
+                        <span class="badge bg-secondary ms-2">Pending</span>
+                    {% elif job.status == 'cancelled' %}
+                        <span class="badge bg-dark ms-2">Cancelled</span>
+                    {% endif %}
+                </h1>
+                <div>
+                    <a href="{{ url_for('queue_dashboard') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Job Information Card -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Job Information</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">Job ID:</dt>
+                        <dd class="col-sm-8"><code>{{ job.job_id }}</code></dd>
+                        
+                        <dt class="col-sm-4">URL:</dt>
+                        <dd class="col-sm-8">
+                            <a href="{{ job.airbnb_url }}" target="_blank" class="text-break">
+                                {{ job.airbnb_url }}
+                                <i class="fas fa-external-link-alt ms-1"></i>
+                            </a>
+                        </dd>
+                        
+                        <dt class="col-sm-4">Priority:</dt>
+                        <dd class="col-sm-8">
+                            <span class="badge bg-info">{{ job.priority }}</span>
+                            {% if job.status == 'pending' %}
+                            <button class="btn btn-sm btn-link p-0 ms-2" data-bs-toggle="modal" data-bs-target="#changePriorityModal">
+                                <i class="fas fa-edit"></i> Change
+                            </button>
+                            {% endif %}
+                        </dd>
+                        
+                        <dt class="col-sm-4">Analysis Mode:</dt>
+                        <dd class="col-sm-8">
+                            <span class="badge bg-{{ 'primary' if job.analysis_mode == 'deep' else 'secondary' }}">
+                                {{ job.analysis_mode|upper }}
+                            </span>
+                        </dd>
+                        
+                        <dt class="col-sm-4">Retry Count:</dt>
+                        <dd class="col-sm-8">{{ job.retry_count }} / {{ job.max_retries }}</dd>
+                        
+                        {% if job.worker_id %}
+                        <dt class="col-sm-4">Worker ID:</dt>
+                        <dd class="col-sm-8"><code>{{ job.worker_id }}</code></dd>
+                        {% endif %}
+                        
+                        {% if job.queued_by %}
+                        <dt class="col-sm-4">Queued By:</dt>
+                        <dd class="col-sm-8">{{ job.queued_by }}</dd>
+                        {% endif %}
+                        
+                        {% if job.notes %}
+                        <dt class="col-sm-4">Notes:</dt>
+                        <dd class="col-sm-8">
+                            <div class="bg-light p-2 rounded">
+                                {{ job.notes }}
+                            </div>
+                        </dd>
+                        {% endif %}
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timing Information Card -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-clock me-2"></i>Timing Information</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">Created:</dt>
+                        <dd class="col-sm-8">
+                            {{ job.created_at.strftime('%Y-%m-%d %H:%M:%S') if job.created_at else '-' }}
+                        </dd>
+                        
+                        <dt class="col-sm-4">Started:</dt>
+                        <dd class="col-sm-8">
+                            {{ job.started_at.strftime('%Y-%m-%d %H:%M:%S') if job.started_at else '-' }}
+                        </dd>
+                        
+                        <dt class="col-sm-4">Completed:</dt>
+                        <dd class="col-sm-8">
+                            {{ job.completed_at.strftime('%Y-%m-%d %H:%M:%S') if job.completed_at else '-' }}
+                        </dd>
+                        
+                        <dt class="col-sm-4">Last Activity:</dt>
+                        <dd class="col-sm-8">
+                            {{ job.last_activity.strftime('%Y-%m-%d %H:%M:%S') if job.last_activity else '-' }}
+                        </dd>
+                        
+                        {% if processing_time %}
+                        <dt class="col-sm-4">Processing Time:</dt>
+                        <dd class="col-sm-8">
+                            <strong>{{ processing_time }}</strong>
+                        </dd>
+                        {% endif %}
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions Card -->
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-cog me-2"></i>Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="btn-group" role="group">
+                        {% if job.status == 'pending' %}
+                        <form action="{{ url_for('cancel_job', job_id=job.job_id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to cancel this job?');">
+                            <button type="submit" class="btn btn-outline-danger">
+                                <i class="fas fa-ban me-1"></i>Cancel Job
+                            </button>
+                        </form>
+                        {% endif %}
+                        
+                        {% if job.status in ['failed', 'cancelled'] %}
+                        <form action="{{ url_for('retry_job', job_id=job.job_id) }}" method="POST" class="d-inline">
+                            <button type="submit" class="btn btn-outline-warning">
+                                <i class="fas fa-redo me-1"></i>Retry Job
+                            </button>
+                        </form>
+                        {% endif %}
+                        
+                        {% if job.verification_result_id and verification_result %}
+                        <a href="{{ url_for('results', session_id=verification_result.session_id) }}" class="btn btn-outline-success">
+                            <i class="fas fa-eye me-1"></i>View Results
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Message Card (if failed) -->
+    {% if job.status == 'failed' and job.error_message %}
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card border-danger">
+                <div class="card-header bg-danger bg-opacity-10 text-danger">
+                    <h5 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Error Details</h5>
+                </div>
+                <div class="card-body">
+                    <pre class="mb-0 text-danger">{{ job.error_message }}</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Verification Results (if completed) -->
+    {% if job.status == 'completed' and verification_result %}
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card border-success">
+                <div class="card-header bg-success bg-opacity-10 text-success">
+                    <h5 class="mb-0"><i class="fas fa-check-circle me-2"></i>Verification Results Summary</h5>
+                </div>
+                <div class="card-body">
+                    {% set data = verification_result.data %}
+                    {% set location_data = data.location_data %}
+                    
+                    {% if location_data %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="fw-bold">Property Information</h6>
+                            <dl class="row">
+                                <dt class="col-sm-4">Title:</dt>
+                                <dd class="col-sm-8">{{ location_data.title|default('-', true) }}</dd>
+                                
+                                <dt class="col-sm-4">Address:</dt>
+                                <dd class="col-sm-8">
+                                    {{ location_data.address|default('Not found', true) }}
+                                    {% if location_data.address_confidence %}
+                                        <br>
+                                        <small class="text-muted">
+                                            Confidence: {{ location_data.address_confidence }}%
+                                        </small>
+                                    {% endif %}
+                                </dd>
+                                
+                                {% if location_data.city %}
+                                <dt class="col-sm-4">City:</dt>
+                                <dd class="col-sm-8">{{ location_data.city }}</dd>
+                                {% endif %}
+                                
+                                {% if location_data.neighborhood %}
+                                <dt class="col-sm-4">Neighborhood:</dt>
+                                <dd class="col-sm-8">{{ location_data.neighborhood }}</dd>
+                                {% endif %}
+                            </dl>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h6 class="fw-bold">Verification Status</h6>
+                            <dl class="row">
+                                {% if location_data.confidence_level %}
+                                <dt class="col-sm-4">Confidence:</dt>
+                                <dd class="col-sm-8">
+                                    {% if location_data.confidence_level == 'Verified' %}
+                                        <span class="badge bg-success">{{ location_data.confidence_level }}</span>
+                                    {% elif location_data.confidence_level == 'Approximate' %}
+                                        <span class="badge bg-warning">{{ location_data.confidence_level }}</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">{{ location_data.confidence_level }}</span>
+                                    {% endif %}
+                                </dd>
+                                {% endif %}
+                                
+                                {% if location_data.latitude and location_data.longitude %}
+                                <dt class="col-sm-4">Coordinates:</dt>
+                                <dd class="col-sm-8">
+                                    {{ location_data.latitude|round(6) }}, {{ location_data.longitude|round(6) }}
+                                </dd>
+                                {% endif %}
+                                
+                                {% if location_data.address_source %}
+                                <dt class="col-sm-4">Source:</dt>
+                                <dd class="col-sm-8">
+                                    <span class="badge bg-info">{{ location_data.address_source|replace('_', ' ')|title }}</span>
+                                </dd>
+                                {% endif %}
+                            </dl>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <a href="{{ url_for('results', session_id=verification_result.session_id) }}" class="btn btn-success">
+                            <i class="fas fa-arrow-right me-1"></i>View Full Results
+                        </a>
+                    </div>
+                    {% else %}
+                    <p class="text-muted">No location data available</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Change Priority Modal -->
+<div class="modal fade" id="changePriorityModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Change Priority</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('change_priority', job_id=job.job_id) }}" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="priority" class="form-label">New Priority (1-10):</label>
+                        <input type="number" class="form-control" id="priority" name="priority" 
+                               value="{{ job.priority }}" min="1" max="10" required>
+                        <small class="text-muted">Lower number = higher priority</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Priority</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Auto-refresh for processing jobs
+{% if job.status == 'processing' %}
+setTimeout(() => {
+    location.reload();
+}, 5000); // Refresh every 5 seconds for processing jobs
+{% endif %}
+</script>
+{% endblock %}

@@ -1,0 +1,539 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header with title and actions -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="h3 mb-3">
+                <i class="fas fa-tasks me-2"></i>Job Queue Dashboard
+            </h1>
+        </div>
+        <div class="col-md-4 text-md-end">
+            <a href="{{ url_for('export_queue', status=status_filter) }}" class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-download me-1"></i>Export CSV
+            </a>
+            <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#clearOldModal">
+                <i class="fas fa-broom me-1"></i>Clear Old
+            </button>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Pending</h6>
+                    <h3 class="card-title mb-0 text-secondary">
+                        <i class="fas fa-clock me-1"></i>{{ stats.pending }}
+                    </h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card bg-warning bg-opacity-10">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Processing</h6>
+                    <h3 class="card-title mb-0 text-warning">
+                        <i class="fas fa-spinner fa-spin me-1"></i>{{ stats.processing }}
+                    </h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card bg-success bg-opacity-10">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Completed Today</h6>
+                    <h3 class="card-title mb-0 text-success">
+                        <i class="fas fa-check-circle me-1"></i>{{ stats.completed_today }}
+                    </h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card bg-danger bg-opacity-10">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Failed</h6>
+                    <h3 class="card-title mb-0 text-danger">
+                        <i class="fas fa-times-circle me-1"></i>{{ stats.failed }}
+                    </h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Metrics -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Performance Metrics (Last 24 Hours)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-muted">Average Processing Time:</span>
+                                <strong>{{ performance_metrics.avg_processing_time }}</strong>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-muted">Success Rate:</span>
+                                <strong>{{ performance_metrics.success_rate }}</strong>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-muted">Jobs per Hour:</span>
+                                <strong>{{ performance_metrics.jobs_per_hour }}</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs Navigation -->
+    <ul class="nav nav-tabs mb-4" id="queueTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="all-jobs-tab" data-bs-toggle="tab" data-bs-target="#all-jobs" type="button" role="tab" aria-controls="all-jobs" aria-selected="true">
+                <i class="fas fa-list me-1"></i> All Jobs
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="batch-verification-tab" data-bs-toggle="tab" data-bs-target="#batch-verification" type="button" role="tab" aria-controls="batch-verification" aria-selected="false">
+                <i class="fas fa-check-double me-1"></i> Batch Verification
+                {% if double_check_count > 0 %}
+                <span class="badge bg-warning ms-1">{{ double_check_count }}</span>
+                {% endif %}
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="queueTabContent">
+        <!-- All Jobs Tab -->
+        <div class="tab-pane fade show active" id="all-jobs" role="tabpanel" aria-labelledby="all-jobs-tab">
+            <!-- Filters -->
+            <div class="row mb-3">
+                <div class="col-12">
+                    <form method="GET" class="row g-3">
+                        <div class="col-auto">
+                            <label class="form-label">Status Filter:</label>
+                        </div>
+                <div class="col-auto">
+                    <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All Statuses</option>
+                        <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+                        <option value="processing" {% if status_filter == 'processing' %}selected{% endif %}>Processing</option>
+                        <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>Completed</option>
+                        <option value="failed" {% if status_filter == 'failed' %}selected{% endif %}>Failed</option>
+                        <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <label class="form-label">Priority:</label>
+                </div>
+                <div class="col-auto">
+                    <select name="priority" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="all" {% if priority_filter == 'all' %}selected{% endif %}>All Priorities</option>
+                        {% for i in range(1, 11) %}
+                        <option value="{{ i }}" {% if priority_filter == i|string %}selected{% endif %}>Priority {{ i }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-auto ms-auto">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="autoRefresh" checked>
+                        <label class="form-check-label" for="autoRefresh">
+                            Auto-refresh (30s)
+                        </label>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Jobs Table -->
+    <div class="card">
+        <div class="card-header bg-light">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Jobs Queue</h5>
+                <div>
+                    <button class="btn btn-sm btn-outline-danger" onclick="bulkAction('cancel')">
+                        <i class="fas fa-ban me-1"></i>Cancel Selected
+                    </button>
+                    <button class="btn btn-sm btn-outline-warning" onclick="bulkAction('retry')">
+                        <i class="fas fa-redo me-1"></i>Retry Selected
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="30">
+                                <input type="checkbox" class="form-check-input" id="selectAll">
+                            </th>
+                            <th>Job ID</th>
+                            <th>URL</th>
+                            <th>Status</th>
+                            <th>Priority</th>
+                            <th>Created</th>
+                            <th>Started</th>
+                            <th>Notes</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for job in jobs %}
+                        <tr>
+                            <td>
+                                <input type="checkbox" class="form-check-input job-checkbox" value="{{ job.job_id }}">
+                            </td>
+                            <td>
+                                <a href="{{ url_for('job_details', job_id=job.job_id) }}" class="text-decoration-none">
+                                    <code>{{ job.job_id[:8] }}...</code>
+                                </a>
+                            </td>
+                            <td>
+                                <a href="{{ job.airbnb_url }}" target="_blank" class="text-decoration-none text-truncate d-inline-block" style="max-width: 250px;" title="{{ job.airbnb_url }}">
+                                    {{ job.airbnb_url }}
+                                </a>
+                            </td>
+                            <td>
+                                {% if job.status == 'completed' %}
+                                    <span class="badge bg-success"><i class="fas fa-check me-1"></i>Completed</span>
+                                {% elif job.status == 'processing' %}
+                                    <span class="badge bg-warning"><i class="fas fa-spinner fa-spin me-1"></i>Processing</span>
+                                {% elif job.status == 'failed' %}
+                                    <span class="badge bg-danger"><i class="fas fa-times me-1"></i>Failed</span>
+                                {% elif job.status == 'pending' %}
+                                    <span class="badge bg-secondary"><i class="fas fa-clock me-1"></i>Pending</span>
+                                {% elif job.status == 'cancelled' %}
+                                    <span class="badge bg-dark"><i class="fas fa-ban me-1"></i>Cancelled</span>
+                                {% else %}
+                                    <span class="badge bg-light text-dark">{{ job.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-info">{{ job.priority }}</span>
+                            </td>
+                            <td>
+                                <small>{{ job.created_at.strftime('%Y-%m-%d %H:%M') if job.created_at else '-' }}</small>
+                            </td>
+                            <td>
+                                <small>{{ job.started_at.strftime('%Y-%m-%d %H:%M') if job.started_at else '-' }}</small>
+                            </td>
+                            <td>
+                                <small class="text-muted">{{ job.notes[:50] if job.notes else '-' }}</small>
+                            </td>
+                            <td>
+                                <a href="{{ url_for('job_details', job_id=job.job_id) }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="9" class="text-center py-4 text-muted">
+                                <i class="fas fa-inbox fa-3x mb-3"></i>
+                                <p>No jobs found</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% if pagination and pagination.pages > 1 %}
+        <div class="card-footer">
+            <nav aria-label="Page navigation">
+                <ul class="pagination pagination-sm mb-0 justify-content-center">
+                    {% if pagination.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('queue_dashboard', page=pagination.prev_num, status=status_filter, priority=priority_filter) }}">Previous</a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for page in pagination.iter_pages() %}
+                        {% if page %}
+                            <li class="page-item {% if page == pagination.page %}active{% endif %}">
+                                <a class="page-link" href="{{ url_for('queue_dashboard', page=page, status=status_filter, priority=priority_filter) }}">{{ page }}</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled"><span class="page-link">…</span></li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if pagination.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('queue_dashboard', page=pagination.next_num, status=status_filter, priority=priority_filter) }}">Next</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+            </div>
+        </div> <!-- End of All Jobs Tab -->
+        
+        <!-- Batch Verification Tab -->
+        <div class="tab-pane fade" id="batch-verification" role="tabpanel" aria-labelledby="batch-verification-tab">
+            <div class="card">
+                <div class="card-header bg-warning bg-opacity-10">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-check-double me-2"></i>Batch Verification Queue
+                        </h5>
+                        {% if double_check_jobs %}
+                        <button id="runBatchBtn" class="btn btn-warning" onclick="startBatchVerification()">
+                            <i class="fas fa-play-circle me-1"></i>Run Batch Verification
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if double_check_jobs %}
+                    <div class="alert alert-info mb-3">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Batch Processing:</strong> Click "Run Batch Verification" to process all pending double-check jobs with 5-10 minute delays between each job.
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Job ID</th>
+                                    <th>URL</th>
+                                    <th>Status</th>
+                                    <th>Batch ID</th>
+                                    <th>Queued At</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for job in double_check_jobs %}
+                                <tr>
+                                    <td><code>{{ job.job_id[:8] }}...</code></td>
+                                    <td>
+                                        <a href="{{ job.airbnb_url }}" target="_blank" class="text-truncate d-inline-block" style="max-width: 300px;">
+                                            {{ job.airbnb_url }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        {% if job.status == 'pending' %}
+                                            <span class="badge bg-secondary">Pending</span>
+                                        {% elif job.status == 'processing' %}
+                                            <span class="badge bg-warning">Processing</span>
+                                        {% elif job.status == 'completed' %}
+                                            <span class="badge bg-success">Completed</span>
+                                        {% else %}
+                                            <span class="badge bg-info">{{ job.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if job.batch_id %}
+                                            <code>{{ job.batch_id[:8] }}...</code>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small>{{ job.created_at.strftime('%Y-%m-%d %H:%M') if job.created_at else '-' }}</small>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('job_details', job_id=job.job_id) }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-check-double fa-3x text-muted mb-3"></i>
+                        <h5>No Double-Check Jobs</h5>
+                        <p class="text-muted">There are no pending double-check verification jobs.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div> <!-- End of Batch Verification Tab -->
+    </div> <!-- End of Tab Content -->
+</div>
+
+<!-- Clear Old Jobs Modal -->
+<div class="modal fade" id="clearOldModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Clear Old Jobs</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('clear_old_jobs') }}" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="days" class="form-label">Delete completed jobs older than:</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="days" name="days" value="7" min="1" max="365" required>
+                            <span class="input-group-text">days</span>
+                        </div>
+                    </div>
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-1"></i>
+                        This action cannot be undone. Only completed and cancelled jobs will be deleted.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Clear Old Jobs</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Auto-refresh functionality
+let refreshInterval;
+
+function startAutoRefresh() {
+    refreshInterval = setInterval(() => {
+        // Update statistics via API
+        fetch('/api/queue/stats')
+            .then(response => response.json())
+            .then(data => {
+                // Update stats cards
+                document.querySelectorAll('.card-title').forEach(el => {
+                    if (el.textContent.includes('Pending')) {
+                        el.innerHTML = '<i class="fas fa-clock me-1"></i>' + data.stats.pending;
+                    } else if (el.textContent.includes('Processing')) {
+                        el.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>' + data.stats.processing;
+                    } else if (el.textContent.includes('Completed')) {
+                        el.innerHTML = '<i class="fas fa-check-circle me-1"></i>' + data.stats.completed_today;
+                    } else if (el.textContent.includes('Failed')) {
+                        el.innerHTML = '<i class="fas fa-times-circle me-1"></i>' + data.stats.failed;
+                    }
+                });
+                
+                // Optionally reload the page if there are significant changes
+                // location.reload();
+            })
+            .catch(error => console.error('Error fetching stats:', error));
+    }, 30000); // 30 seconds
+}
+
+function stopAutoRefresh() {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+    }
+}
+
+// Toggle auto-refresh
+document.getElementById('autoRefresh').addEventListener('change', function() {
+    if (this.checked) {
+        startAutoRefresh();
+    } else {
+        stopAutoRefresh();
+    }
+});
+
+// Start auto-refresh if checkbox is checked on page load
+if (document.getElementById('autoRefresh').checked) {
+    startAutoRefresh();
+}
+
+// Select all checkbox functionality
+document.getElementById('selectAll').addEventListener('change', function() {
+    const checkboxes = document.querySelectorAll('.job-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = this.checked;
+    });
+});
+
+// Start Batch Verification
+function startBatchVerification() {
+    if (!confirm('Start batch verification? This will process all pending double-check jobs with 5-10 minute delays between each job.')) {
+        return;
+    }
+    
+    const btn = document.getElementById('runBatchBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Starting Batch...';
+    
+    fetch('{{ url_for("start_batch_verification") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(`Batch verification started! Processing ${data.job_count} jobs.`);
+            location.reload();
+        } else {
+            alert('Failed to start batch verification: ' + (data.message || 'Unknown error'));
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-play-circle me-1"></i>Run Batch Verification';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to start batch verification');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-play-circle me-1"></i>Run Batch Verification';
+    });
+}
+
+// Bulk actions
+function bulkAction(action) {
+    const selectedJobs = [];
+    document.querySelectorAll('.job-checkbox:checked').forEach(checkbox => {
+        selectedJobs.push(checkbox.value);
+    });
+    
+    if (selectedJobs.length === 0) {
+        alert('Please select at least one job');
+        return;
+    }
+    
+    if (!confirm(`Are you sure you want to ${action} ${selectedJobs.length} job(s)?`)) {
+        return;
+    }
+    
+    // Create form and submit
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ url_for("bulk_action") }}';
+    
+    const actionInput = document.createElement('input');
+    actionInput.type = 'hidden';
+    actionInput.name = 'action';
+    actionInput.value = action;
+    form.appendChild(actionInput);
+    
+    selectedJobs.forEach(jobId => {
+        const jobInput = document.createElement('input');
+        jobInput.type = 'hidden';
+        jobInput.name = 'job_ids[]';
+        jobInput.value = jobId;
+        form.appendChild(jobInput);
+    });
+    
+    document.body.appendChild(form);
+    form.submit();
+}
+</script>
+{% endblock %}

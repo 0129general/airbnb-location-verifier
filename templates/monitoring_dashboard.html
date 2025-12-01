@@ -1,0 +1,846 @@
+{% extends "layout.html" %}
+
+{% block title %}Monitoring Dashboard - Airbnb Address Verification{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    body {
+        background: #f9fafb;
+    }
+    
+    .dashboard-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 0 20px;
+    }
+    
+    .dashboard-header {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        padding: 30px;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+    
+    .metric-card {
+        background: white;
+        border-radius: 15px;
+        padding: 25px;
+        margin-bottom: 20px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    }
+    
+    .metric-value {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #667eea;
+    }
+    
+    .metric-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .metric-change {
+        font-size: 0.9rem;
+        margin-top: 5px;
+    }
+    
+    .metric-change.positive {
+        color: #28a745;
+    }
+    
+    .metric-change.negative {
+        color: #dc3545;
+    }
+    
+    .alert-card {
+        background: white;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 15px;
+        border-left: 4px solid;
+    }
+    
+    .alert-card.warning {
+        border-left-color: #ffc107;
+    }
+    
+    .alert-card.danger {
+        border-left-color: #dc3545;
+    }
+    
+    .alert-card.info {
+        border-left-color: #17a2b8;
+    }
+    
+    .system-status {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .status-indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+    }
+    
+    .status-indicator.healthy {
+        background-color: #28a745;
+    }
+    
+    .status-indicator.warning {
+        background-color: #ffc107;
+    }
+    
+    .status-indicator.critical {
+        background-color: #dc3545;
+    }
+    
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 300px;
+        margin-top: 20px;
+    }
+    
+    .progress-bar-custom {
+        height: 25px;
+        border-radius: 12px;
+        background-color: #f0f0f0;
+        overflow: hidden;
+    }
+    
+    .progress-bar-fill {
+        height: 100%;
+        border-radius: 12px;
+        transition: width 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+    }
+    
+    .nav-pills .nav-link {
+        border-radius: 10px;
+        padding: 10px 20px;
+        margin: 0 5px;
+        transition: all 0.3s ease;
+    }
+    
+    .nav-pills .nav-link.active {
+        background-color: #667eea;
+    }
+    
+    .refresh-indicator {
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    
+    .metric-icon {
+        font-size: 2rem;
+        color: #667eea;
+        opacity: 0.8;
+    }
+    
+    .section-title {
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Header -->
+    <div class="dashboard-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-0">
+                    <i class="bi bi-speedometer2"></i>
+                    Monitoring Dashboard
+                </h1>
+                <p class="text-muted mb-0 mt-2">Real-time system metrics and observability</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <div class="system-status">
+                    <span>System Status:</span>
+                    <span class="status-indicator {{ 'critical' if alerts|length > 2 else 'warning' if alerts else 'healthy' }}"></span>
+                    <strong>{{ 'Critical' if alerts|length > 2 else 'Warning' if alerts else 'Healthy' }}</strong>
+                </div>
+                <small class="text-muted d-block mt-2">
+                    Last updated: <span id="last-updated">now</span>
+                    <i class="bi bi-arrow-clockwise ms-2 refresh-indicator" id="refresh-icon" style="display: none;"></i>
+                </small>
+            </div>
+        </div>
+        
+        <!-- Navigation -->
+        <ul class="nav nav-pills mt-4" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link active" data-bs-toggle="pill" href="#overview">Overview</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="pill" href="#verifications">Verifications</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="pill" href="#system">System</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="pill" href="#apis">External APIs</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="pill" href="#alerts">Alerts</a>
+            </li>
+            <li class="nav-item ms-auto">
+                <a href="/metrics" target="_blank" class="btn btn-outline-secondary">
+                    <i class="bi bi-file-text"></i> Raw Metrics
+                </a>
+            </li>
+        </ul>
+    </div>
+    
+    <!-- Tab Content -->
+    <div class="tab-content">
+        <!-- Overview Tab -->
+        <div class="tab-pane fade show active" id="overview">
+            <!-- Key Metrics -->
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="metric-card">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="metric-label">Verifications (1h)</div>
+                                <div class="metric-value" id="recent-verifications">{{ stats.recent_verifications }}</div>
+                                <div class="metric-change positive">
+                                    <i class="bi bi-arrow-up"></i> {{ stats.success_rate }}% success
+                                </div>
+                            </div>
+                            <i class="bi bi-check-circle metric-icon"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <div class="metric-card">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="metric-label">Active Jobs</div>
+                                <div class="metric-value" id="active-jobs">{{ metrics.background_jobs.active }}</div>
+                                <div class="metric-change">
+                                    {{ stats.pending_jobs }} pending
+                                </div>
+                            </div>
+                            <i class="bi bi-hourglass-split metric-icon"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <div class="metric-card">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="metric-label">API Calls</div>
+                                <div class="metric-value" id="api-calls">{{ metrics.external_apis.total_calls }}</div>
+                                <div class="metric-change {{ 'negative' if metrics.external_apis.total_errors > 10 else 'positive' }}">
+                                    {{ metrics.external_apis.total_errors }} errors
+                                </div>
+                            </div>
+                            <i class="bi bi-cloud-arrow-up metric-icon"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <div class="metric-card">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="metric-label">DB Operations</div>
+                                <div class="metric-value" id="db-operations">{{ metrics.database.total_operations }}</div>
+                                <div class="metric-change">
+                                    {{ metrics.database.active_connections }} connections
+                                </div>
+                            </div>
+                            <i class="bi bi-database metric-icon"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Charts Row -->
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <div class="metric-card">
+                        <h5 class="section-title">Verification Trend</h5>
+                        <div class="chart-container">
+                            <canvas id="verificationChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="metric-card">
+                        <h5 class="section-title">Response Times</h5>
+                        <div class="chart-container">
+                            <canvas id="responseTimeChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Verifications Tab -->
+        <div class="tab-pane fade" id="verifications">
+            <div class="metric-card">
+                <h5 class="section-title">Verification Metrics</h5>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="mt-3">Processing Status</h6>
+                        <div class="progress-bar-custom mt-3">
+                            <div class="progress-bar-fill bg-success" style="width: {{ stats.success_rate }}%;">
+                                Success: {{ stats.success_rate }}%
+                            </div>
+                        </div>
+                        
+                        <h6 class="mt-4">Confidence Distribution</h6>
+                        <div class="chart-container">
+                            <canvas id="confidenceChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h6 class="mt-3">Job Queue Status</h6>
+                        <ul class="list-group">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-clock text-warning"></i> Pending</span>
+                                <span class="badge bg-warning rounded-pill">{{ stats.pending_jobs }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-play-circle text-primary"></i> Processing</span>
+                                <span class="badge bg-primary rounded-pill">{{ stats.processing_jobs }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-check-circle text-success"></i> Completed</span>
+                                <span class="badge bg-success rounded-pill">{{ metrics.background_jobs.completed }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-x-circle text-danger"></i> Failed (1h)</span>
+                                <span class="badge bg-danger rounded-pill">{{ stats.failed_jobs }}</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- System Tab -->
+        <div class="tab-pane fade" id="system">
+            <div class="metric-card">
+                <h5 class="section-title">System Resources</h5>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>CPU Usage</h6>
+                        <div class="progress-bar-custom">
+                            <div class="progress-bar-fill {{ 'bg-danger' if metrics.system.cpu_usage > 80 else 'bg-warning' if metrics.system.cpu_usage > 60 else 'bg-success' }}" 
+                                 style="width: {{ metrics.system.cpu_usage }}%;" id="cpu-bar">
+                                {{ "%.1f"|format(metrics.system.cpu_usage) }}%
+                            </div>
+                        </div>
+                        
+                        <h6 class="mt-4">Memory Usage</h6>
+                        <div class="progress-bar-custom">
+                            <div class="progress-bar-fill {{ 'bg-danger' if metrics.system.memory_usage > 90 else 'bg-warning' if metrics.system.memory_usage > 70 else 'bg-success' }}" 
+                                 style="width: {{ metrics.system.memory_usage }}%;" id="memory-bar">
+                                {{ "%.1f"|format(metrics.system.memory_usage) }}%
+                            </div>
+                        </div>
+                        <small class="text-muted">
+                            {{ (metrics.system.memory_bytes / 1024 / 1024) | round(1) }} MB used
+                        </small>
+                        
+                        <h6 class="mt-4">Disk Usage</h6>
+                        <div class="progress-bar-custom">
+                            <div class="progress-bar-fill {{ 'bg-danger' if metrics.system.disk_usage > 90 else 'bg-warning' if metrics.system.disk_usage > 70 else 'bg-info' }}" 
+                                 style="width: {{ metrics.system.disk_usage }}%;" id="disk-bar">
+                                {{ "%.1f"|format(metrics.system.disk_usage) }}%
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h6>System Timeline</h6>
+                        <div class="chart-container">
+                            <canvas id="systemChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- External APIs Tab -->
+        <div class="tab-pane fade" id="apis">
+            <div class="metric-card">
+                <h5 class="section-title">External API Performance</h5>
+                
+                <div class="row">
+                    <div class="col-md-12">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Service</th>
+                                    <th>Total Calls</th>
+                                    <th>Errors</th>
+                                    <th>Success Rate</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><i class="bi bi-geo-alt"></i> Google Maps</td>
+                                    <td id="gmaps-calls">-</td>
+                                    <td id="gmaps-errors">-</td>
+                                    <td id="gmaps-success">-</td>
+                                    <td><span class="badge bg-success">Active</span></td>
+                                </tr>
+                                <tr>
+                                    <td><i class="bi bi-eye"></i> Vision API</td>
+                                    <td id="vision-calls">-</td>
+                                    <td id="vision-errors">-</td>
+                                    <td id="vision-success">-</td>
+                                    <td><span class="badge bg-success">Active</span></td>
+                                </tr>
+                                <tr>
+                                    <td><i class="bi bi-robot"></i> OpenAI</td>
+                                    <td id="openai-calls">-</td>
+                                    <td id="openai-errors">-</td>
+                                    <td id="openai-success">-</td>
+                                    <td><span class="badge bg-success">Active</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h6>API Response Times</h6>
+                        <div class="chart-container">
+                            <canvas id="apiLatencyChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Alerts Tab -->
+        <div class="tab-pane fade" id="alerts">
+            <div class="metric-card">
+                <h5 class="section-title">Active Alerts & Warnings</h5>
+                
+                {% if alerts %}
+                    {% for alert in alerts %}
+                    <div class="alert-card {{ alert.type }}">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>
+                                    <i class="bi {{ 'bi-exclamation-triangle' if alert.type == 'warning' else 'bi-x-octagon' }}"></i>
+                                    {{ alert.message }}
+                                </strong>
+                                <div class="text-muted small mt-1">
+                                    Metric: {{ alert.metric }} | Value: {{ alert.value }}
+                                </div>
+                            </div>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="dismissAlert(this)">
+                                Dismiss
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="alert-card info">
+                        <i class="bi bi-check-circle"></i>
+                        No active alerts. System is running smoothly.
+                    </div>
+                {% endif %}
+                
+                <h5 class="section-title mt-5">Alert Thresholds</h5>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Alert Type</th>
+                            <th>Current Value</th>
+                            <th>Threshold</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>CPU Usage</td>
+                            <td>{{ "%.1f"|format(metrics.system.cpu_usage) }}%</td>
+                            <td>80%</td>
+                            <td>
+                                <span class="badge {{ 'bg-danger' if metrics.system.cpu_usage > 80 else 'bg-success' }}">
+                                    {{ 'Alert' if metrics.system.cpu_usage > 80 else 'OK' }}
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Memory Usage</td>
+                            <td>{{ "%.1f"|format(metrics.system.memory_usage) }}%</td>
+                            <td>90%</td>
+                            <td>
+                                <span class="badge {{ 'bg-danger' if metrics.system.memory_usage > 90 else 'bg-success' }}">
+                                    {{ 'Alert' if metrics.system.memory_usage > 90 else 'OK' }}
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Disk Usage</td>
+                            <td>{{ "%.1f"|format(metrics.system.disk_usage) }}%</td>
+                            <td>90%</td>
+                            <td>
+                                <span class="badge {{ 'bg-danger' if metrics.system.disk_usage > 90 else 'bg-success' }}">
+                                    {{ 'Alert' if metrics.system.disk_usage > 90 else 'OK' }}
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Pending Jobs</td>
+                            <td>{{ metrics.background_jobs.active }}</td>
+                            <td>50</td>
+                            <td>
+                                <span class="badge {{ 'bg-danger' if metrics.background_jobs.active > 50 else 'bg-success' }}">
+                                    {{ 'Alert' if metrics.background_jobs.active > 50 else 'OK' }}
+                                </span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Auto-refresh function
+function autoRefresh() {
+    const refreshIcon = document.getElementById('refresh-icon');
+    refreshIcon.style.display = 'inline-block';
+    
+    fetch('/monitoring-api')
+        .then(response => response.json())
+        .then(data => {
+            updateMetrics(data);
+            refreshIcon.style.display = 'none';
+            updateLastUpdatedTime();
+        })
+        .catch(error => {
+            console.error('Error refreshing data:', error);
+            refreshIcon.style.display = 'none';
+        });
+}
+
+// Update last updated time
+function updateLastUpdatedTime() {
+    const element = document.getElementById('last-updated');
+    const now = new Date();
+    element.textContent = now.toLocaleTimeString();
+}
+
+// Update metrics on the page
+function updateMetrics(data) {
+    // Update key metrics
+    document.getElementById('recent-verifications').textContent = data.stats.recent_verifications;
+    document.getElementById('active-jobs').textContent = data.metrics.background_jobs.active;
+    document.getElementById('api-calls').textContent = data.metrics.external_apis.total_calls;
+    document.getElementById('db-operations').textContent = data.metrics.database.total_operations;
+    
+    // Update CPU, Memory, Disk bars
+    const cpuBar = document.getElementById('cpu-bar');
+    cpuBar.style.width = `${data.metrics.system.cpu_usage}%`;
+    cpuBar.textContent = `${data.metrics.system.cpu_usage.toFixed(1)}%`;
+    updateBarColor(cpuBar, data.metrics.system.cpu_usage, 60, 80);
+    
+    const memoryBar = document.getElementById('memory-bar');
+    memoryBar.style.width = `${data.metrics.system.memory_usage}%`;
+    memoryBar.textContent = `${data.metrics.system.memory_usage.toFixed(1)}%`;
+    updateBarColor(memoryBar, data.metrics.system.memory_usage, 70, 90);
+    
+    const diskBar = document.getElementById('disk-bar');
+    diskBar.style.width = `${data.metrics.system.disk_usage}%`;
+    diskBar.textContent = `${data.metrics.system.disk_usage.toFixed(1)}%`;
+    updateBarColor(diskBar, data.metrics.system.disk_usage, 70, 90);
+    
+    // Update charts
+    updateCharts(data);
+}
+
+// Update bar color based on value
+function updateBarColor(element, value, warningThreshold, dangerThreshold) {
+    element.classList.remove('bg-success', 'bg-warning', 'bg-danger', 'bg-info');
+    if (value > dangerThreshold) {
+        element.classList.add('bg-danger');
+    } else if (value > warningThreshold) {
+        element.classList.add('bg-warning');
+    } else {
+        element.classList.add('bg-success');
+    }
+}
+
+// Dismiss alert function
+function dismissAlert(button) {
+    const alert = button.closest('.alert-card');
+    alert.style.transition = 'opacity 0.3s';
+    alert.style.opacity = '0';
+    setTimeout(() => alert.remove(), 300);
+}
+
+// Initialize Charts
+let verificationChart, responseTimeChart, confidenceChart, systemChart, apiLatencyChart;
+
+function initializeCharts() {
+    // Verification Trend Chart
+    const verificationCtx = document.getElementById('verificationChart');
+    if (verificationCtx) {
+        verificationChart = new Chart(verificationCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Verifications',
+                    data: [],
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        display: true,
+                        grid: {
+                            display: false
+                        }
+                    },
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+    
+    // Response Time Chart
+    const responseTimeCtx = document.getElementById('responseTimeChart');
+    if (responseTimeCtx) {
+        responseTimeChart = new Chart(responseTimeCtx, {
+            type: 'bar',
+            data: {
+                labels: ['OCR', 'NLP', 'Vision', 'Maps', 'Total'],
+                datasets: [{
+                    label: 'Response Time (ms)',
+                    data: [0, 0, 0, 0, 0],
+                    backgroundColor: [
+                        'rgba(102, 126, 234, 0.8)',
+                        'rgba(0, 176, 155, 0.8)',
+                        'rgba(240, 147, 251, 0.8)',
+                        'rgba(250, 112, 154, 0.8)',
+                        'rgba(118, 75, 162, 0.8)'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+    
+    // Confidence Distribution Chart
+    const confidenceCtx = document.getElementById('confidenceChart');
+    if (confidenceCtx) {
+        confidenceChart = new Chart(confidenceCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['High (>80%)', 'Medium (60-80%)', 'Low (<60%)'],
+                datasets: [{
+                    data: [70, 20, 10],
+                    backgroundColor: [
+                        'rgba(40, 167, 69, 0.8)',
+                        'rgba(255, 193, 7, 0.8)',
+                        'rgba(220, 53, 69, 0.8)'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+    }
+    
+    // System Resources Chart
+    const systemCtx = document.getElementById('systemChart');
+    if (systemCtx) {
+        systemChart = new Chart(systemCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: 'CPU %',
+                        data: [],
+                        borderColor: '#667eea',
+                        tension: 0.3
+                    },
+                    {
+                        label: 'Memory %',
+                        data: [],
+                        borderColor: '#00b09b',
+                        tension: 0.3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100
+                    }
+                }
+            }
+        });
+    }
+    
+    // API Latency Chart
+    const apiLatencyCtx = document.getElementById('apiLatencyChart');
+    if (apiLatencyCtx) {
+        apiLatencyChart = new Chart(apiLatencyCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: 'Google Maps',
+                        data: [],
+                        borderColor: '#667eea',
+                        tension: 0.3
+                    },
+                    {
+                        label: 'Vision API',
+                        data: [],
+                        borderColor: '#f093fb',
+                        tension: 0.3
+                    },
+                    {
+                        label: 'OpenAI',
+                        data: [],
+                        borderColor: '#00b09b',
+                        tension: 0.3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+    }
+}
+
+// Update charts with new data
+function updateCharts(data) {
+    // Add timestamp
+    const timestamp = new Date().toLocaleTimeString();
+    
+    // Update verification chart
+    if (verificationChart) {
+        verificationChart.data.labels.push(timestamp);
+        verificationChart.data.datasets[0].data.push(data.stats.recent_verifications);
+        
+        // Keep only last 10 points
+        if (verificationChart.data.labels.length > 10) {
+            verificationChart.data.labels.shift();
+            verificationChart.data.datasets[0].data.shift();
+        }
+        verificationChart.update();
+    }
+    
+    // Update system chart
+    if (systemChart) {
+        systemChart.data.labels.push(timestamp);
+        systemChart.data.datasets[0].data.push(data.metrics.system.cpu_usage);
+        systemChart.data.datasets[1].data.push(data.metrics.system.memory_usage);
+        
+        // Keep only last 10 points
+        if (systemChart.data.labels.length > 10) {
+            systemChart.data.labels.shift();
+            systemChart.data.datasets[0].data.shift();
+            systemChart.data.datasets[1].data.shift();
+        }
+        systemChart.update();
+    }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    initializeCharts();
+    updateLastUpdatedTime();
+    
+    // Set up auto-refresh every 30 seconds
+    setInterval(autoRefresh, 30000);
+});
+</script>
+{% endblock %}

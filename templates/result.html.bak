@@ -1,0 +1,372 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <!-- Header with back button -->
+            <div class="d-flex align-items-center mb-3">
+                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm me-3">
+                    <i class="fas fa-arrow-left"></i> Back
+                </a>
+                <h1 class="h3 mb-0">Geolocation Results</h1>
+            </div>
+            
+            <!-- Original URL info -->
+            <div class="card location-card mb-4">
+                <div class="card-body">
+                    <h2 class="h5">Original Listing</h2>
+                    <div class="d-flex align-items-center mb-0">
+                        <i class="fas fa-link text-muted me-2"></i>
+                        <a href="{{ original_url }}" target="_blank" class="text-truncate">
+                            {{ original_url }}
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Property info card -->
+            <div class="card location-card mb-4">
+                <div class="card-body">
+                    <h2 class="h5 property-title">{{ location_data.listing_title }}</h2>
+                    
+                    <div class="mb-3">
+                        <span class="badge bg-primary location-badge">
+                            <i class="fas fa-map-marker-alt me-1"></i> Location
+                        </span>
+                        
+                        {% if location_data.location_description %}
+                        <span class="text-muted small">
+                            {{ location_data.location_description }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {% if location_data.exact_address is defined and location_data.exact_address %}
+                        <div class="alert alert-success mb-3">
+                            <i class="fas fa-check-circle me-2"></i> Exact address found: <strong>{{ location_data.exact_address }}</strong>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="input-group">
+                            <span class="input-group-text bg-secondary">Address</span>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="property-address" 
+                                   value="{{ location_data.address }}" 
+                                   readonly>
+                            <button class="btn btn-outline-secondary" 
+                                    type="button" 
+                                    id="copy-address"
+                                    data-bs-toggle="tooltip"
+                                    data-bs-placement="top"
+                                    title="Copy to clipboard">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Show detailed address components if available -->
+                    {% if location_data.street_number or location_data.street_name or location_data.neighborhood or location_data.city %}
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h5 class="mb-0 h6">Address Details</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                {% if location_data.street_number %}
+                                <div class="col-md-6 mb-2">
+                                    <small class="text-muted d-block">House/Building Number</small>
+                                    <span class="fw-bold">{{ location_data.street_number }}</span>
+                                </div>
+                                {% endif %}
+                                
+                                {% if location_data.street_name %}
+                                <div class="col-md-6 mb-2">
+                                    <small class="text-muted d-block">Street Name</small>
+                                    <span class="fw-bold">{{ location_data.street_name }}</span>
+                                </div>
+                                {% endif %}
+                                
+                                {% if location_data.neighborhood %}
+                                <div class="col-md-6 mb-2">
+                                    <small class="text-muted d-block">Neighborhood</small>
+                                    <span class="fw-bold">{{ location_data.neighborhood }}</span>
+                                </div>
+                                {% endif %}
+                                
+                                {% if location_data.city %}
+                                <div class="col-md-6 mb-2">
+                                    <small class="text-muted d-block">City</small>
+                                    <span class="fw-bold">{{ location_data.city }}</span>
+                                </div>
+                                {% endif %}
+                                
+                                {% if location_data.state %}
+                                <div class="col-md-6 mb-2">
+                                    <small class="text-muted d-block">State/Province</small>
+                                    <span class="fw-bold">{{ location_data.state }}</span>
+                                </div>
+                                {% endif %}
+                                
+                                {% if location_data.postal_code %}
+                                <div class="col-md-6 mb-2">
+                                    <small class="text-muted d-block">Postal Code</small>
+                                    <span class="fw-bold">{{ location_data.postal_code }}</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="input-group mb-3 mb-md-0">
+                                <span class="input-group-text bg-secondary">Latitude</span>
+                                <input type="text" class="form-control" value="{{ location_data.latitude }}" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <span class="input-group-text bg-secondary">Longitude</span>
+                                <input type="text" class="form-control" value="{{ location_data.longitude }}" readonly>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <a href="https://www.google.com/maps/search/?api=1&query={{ location_data.latitude }},{{ location_data.longitude }}" 
+                           class="btn btn-outline-primary" 
+                           target="_blank">
+                            <i class="fas fa-external-link-alt me-1"></i> View on Google Maps
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Property Comparison Results -->
+            {% if property_comparison and (property_comparison.zillow or property_comparison.realtor) %}
+            <div class="card location-card mb-4">
+                <div class="card-body">
+                    <h2 class="h5 mb-3">Property Comparison</h2>
+                    
+                    <ul class="nav nav-tabs mb-3" id="propertyTabs" role="tablist">
+                        {% if property_comparison.zillow %}
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="zillow-tab" data-bs-toggle="tab" data-bs-target="#zillow" type="button" role="tab" aria-controls="zillow" aria-selected="true">
+                                Zillow
+                            </button>
+                        </li>
+                        {% endif %}
+                        
+                        {% if property_comparison.realtor %}
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link {% if not property_comparison.zillow %}active{% endif %}" id="realtor-tab" data-bs-toggle="tab" data-bs-target="#realtor" type="button" role="tab" aria-controls="realtor" aria-selected="{{ not property_comparison.zillow }}">
+                                Realtor.com
+                            </button>
+                        </li>
+                        {% endif %}
+                    </ul>
+                    
+                    <div class="tab-content" id="propertyTabContent">
+                        <!-- Zillow Results -->
+                        {% if property_comparison.zillow %}
+                        <div class="tab-pane fade show active" id="zillow" role="tabpanel" aria-labelledby="zillow-tab">
+                            {% if property_comparison.zillow.status == 200 %}
+                                <div class="alert alert-info mb-3">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Searched for: <strong>{{ property_comparison.zillow.search_term }}</strong>
+                                </div>
+                                
+                                <!-- Property Links -->
+                                {% if property_comparison.zillow.property_links %}
+                                <div class="mb-3">
+                                    <h6>Property Listings</h6>
+                                    <ul class="list-group">
+                                        {% for link in property_comparison.zillow.property_links %}
+                                        <li class="list-group-item">
+                                            <a href="{{ link }}" target="_blank">
+                                                <i class="fas fa-external-link-alt me-2"></i>
+                                                {{ link | truncate(60) }}
+                                            </a>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                                {% endif %}
+                                
+                                <!-- Property Images -->
+                                {% if property_comparison.zillow.property_images %}
+                                <div class="mb-3">
+                                    <h6>Property Images</h6>
+                                    <div class="row">
+                                        {% for img_url in property_comparison.zillow.property_images %}
+                                        <div class="col-md-6 col-lg-4 mb-3">
+                                            <a href="{{ img_url }}" target="_blank">
+                                                <img src="{{ img_url }}" class="img-fluid img-thumbnail" alt="Property Image">
+                                            </a>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% endif %}
+                                
+                                <a href="{{ property_comparison.zillow.search_url }}" class="btn btn-outline-primary btn-sm" target="_blank">
+                                    <i class="fas fa-search me-1"></i> View Results on Zillow
+                                </a>
+                            {% else %}
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    Could not retrieve results from Zillow. Status: {{ property_comparison.zillow.status }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Realtor.com Results -->
+                        {% if property_comparison.realtor %}
+                        <div class="tab-pane fade {% if not property_comparison.zillow %}show active{% endif %}" id="realtor" role="tabpanel" aria-labelledby="realtor-tab">
+                            {% if property_comparison.realtor.status == 200 %}
+                                <div class="alert alert-info mb-3">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Searched for: <strong>{{ property_comparison.realtor.search_term }}</strong>
+                                </div>
+                                
+                                <!-- Property Links -->
+                                {% if property_comparison.realtor.property_links %}
+                                <div class="mb-3">
+                                    <h6>Property Listings</h6>
+                                    <ul class="list-group">
+                                        {% for link in property_comparison.realtor.property_links %}
+                                        <li class="list-group-item">
+                                            <a href="{{ link }}" target="_blank">
+                                                <i class="fas fa-external-link-alt me-2"></i>
+                                                {{ link | truncate(60) }}
+                                            </a>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                                {% endif %}
+                                
+                                <!-- Property Images -->
+                                {% if property_comparison.realtor.property_images %}
+                                <div class="mb-3">
+                                    <h6>Property Images</h6>
+                                    <div class="row">
+                                        {% for img_url in property_comparison.realtor.property_images %}
+                                        <div class="col-md-6 col-lg-4 mb-3">
+                                            <a href="{{ img_url }}" target="_blank">
+                                                <img src="{{ img_url }}" class="img-fluid img-thumbnail" alt="Property Image">
+                                            </a>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% endif %}
+                                
+                                <a href="{{ property_comparison.realtor.search_url }}" class="btn btn-outline-primary btn-sm" target="_blank">
+                                    <i class="fas fa-search me-1"></i> View Results on Realtor.com
+                                </a>
+                            {% else %}
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    Could not retrieve results from Realtor.com. Status: {{ property_comparison.realtor.status }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Location hints from listing descriptions and reviews -->
+            {% if location_data.location_hints and location_data.location_hints|length > 0 %}
+            <div class="card location-card mb-4">
+                <div class="card-body">
+                    <h2 class="h5 mb-3">Location Hints</h2>
+                    <div class="alert alert-info">
+                        <i class="fas fa-lightbulb me-2"></i>
+                        These are hints about the property location extracted from the listing description and reviews.
+                    </div>
+                    <ul class="list-group">
+                        {% for hint in location_data.location_hints %}
+                        <li class="list-group-item">
+                            <i class="fas fa-quote-left text-muted me-2 small"></i>
+                            {{ hint }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Street View Status -->
+            {% if location_data.street_view_metadata %}
+            <div class="card location-card mb-4">
+                <div class="card-body">
+                    <h2 class="h5 mb-3">Street View Information</h2>
+                    
+                    {% if location_data.street_view_metadata.available %}
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        Google Street View is available for this location.
+                    </div>
+                    
+                    <div class="mb-2">
+                        <small class="text-muted">Last Updated</small>
+                        <p>{{ location_data.street_view_metadata.date }}</p>
+                    </div>
+
+                    <!-- Embedded Street View -->
+                    <div class="mb-3">
+                        <iframe
+                            width="100%"
+                            height="300"
+                            frameborder="0"
+                            style="border:0"
+                            src="https://www.google.com/maps/embed/v1/streetview?key={{ google_maps_api_key }}&location={{ location_data.latitude }},{{ location_data.longitude }}&heading=0&pitch=0&fov=90"
+                            allowfullscreen>
+                        </iframe>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <a href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint={{ location_data.latitude }},{{ location_data.longitude }}" 
+                           class="btn btn-outline-primary btn-sm" 
+                           target="_blank">
+                            <i class="fas fa-street-view me-1"></i> View in Street View
+                        </a>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Google Street View is not available for this location.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Map container -->
+            <div class="card location-card">
+                <div class="card-body">
+                    <h2 class="h5 mb-3">Location Map</h2>
+                    <div id="map" 
+                         data-lat="{{ location_data.latitude }}" 
+                         data-lng="{{ location_data.longitude }}">
+                    </div>
+                    <div class="mt-3">
+                        <p class="text-muted small mb-0">
+                            <i class="fas fa-info-circle me-1"></i>
+                            The circle indicates the approximate area, as Airbnb doesn't reveal exact addresses until booking.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

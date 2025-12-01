@@ -1,0 +1,256 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <!-- Header with back button -->
+            <div class="d-flex align-items-center mb-3">
+                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm me-3">
+                    <i class="fas fa-arrow-left"></i> Back
+                </a>
+                <h1 class="h3 mb-0">Geolocation Results</h1>
+            </div>
+            
+            <!-- Original URL info -->
+            <div class="card location-card mb-4">
+                <div class="card-body">
+                    <h2 class="h5">Original Listing</h2>
+                    <div class="d-flex align-items-center mb-0">
+                        <i class="fas fa-link text-muted me-2"></i>
+                        <a href="{{ original_url }}" target="_blank" class="text-truncate">
+                            {{ original_url }}
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Property info card -->
+            <div class="card location-card mb-4">
+                <div class="card-body">
+                    
+                    <div class="mb-3">
+                        <span class="badge bg-primary location-badge">
+                            <i class="fas fa-map-marker-alt me-1"></i> Location
+                        </span>
+                        
+                        {% if location_data.location_description %}
+                        <span class="text-muted small">
+                            {{ location_data.location_description }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {% if location_data.exact_address is defined and location_data.exact_address %}
+                        <div class="alert alert-success mb-3">
+                            <i class="fas fa-check-circle me-2"></i> Exact address found: <strong>{{ location_data.exact_address }}</strong>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="input-group">
+                            <span class="input-group-text bg-secondary">Address</span>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="property-address" 
+                                   value="{{ location_data.address }}" 
+                                   readonly>
+                            <button class="btn btn-outline-secondary" 
+                                    type="button" 
+                                    id="copy-address"
+                                    data-bs-toggle="tooltip"
+                                    data-bs-placement="top"
+                                    title="Copy to clipboard">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Show detailed address components if available -->
+                    {% if location_data.street_number or location_data.street_name or location_data.neighborhood or location_data.city %}
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h5 class="mb-0 h6">Address Details</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                {% if location_data.street_number %}
+                                <div class="col-md-6 mb-2">
+                                    <small class="text-muted d-block">House/Building Number</small>
+                                    <span class="fw-bold">{{ location_data.street_number }}</span>
+                                </div>
+                                {% endif %}
+                                
+                                {% if location_data.street_name %}
+                                <div class="col-md-6 mb-2">
+                                    <small class="text-muted d-block">Street Name</small>
+                                    <span class="fw-bold">{{ location_data.street_name }}</span>
+                                </div>
+                                {% endif %}
+                                
+                                {% if location_data.neighborhood %}
+                                <div class="col-md-6 mb-2">
+                                    <small class="text-muted d-block">Neighborhood</small>
+                                    <span class="fw-bold">{{ location_data.neighborhood }}</span>
+                                </div>
+                                {% endif %}
+                                
+                                {% if location_data.city %}
+                                <div class="col-md-6 mb-2">
+                                    <small class="text-muted d-block">City</small>
+                                    <span class="fw-bold">{{ location_data.city }}</span>
+                                </div>
+                                {% endif %}
+                                
+                                {% if location_data.state %}
+                                <div class="col-md-6 mb-2">
+                                    <small class="text-muted d-block">State/Province</small>
+                                    <span class="fw-bold">{{ location_data.state }}</span>
+                                </div>
+                                {% endif %}
+                                
+                                {% if location_data.postal_code %}
+                                <div class="col-md-6 mb-2">
+                                    <small class="text-muted d-block">Postal Code</small>
+                                    <span class="fw-bold">{{ location_data.postal_code }}</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="input-group mb-3 mb-md-0">
+                                <span class="input-group-text bg-secondary">Latitude</span>
+                                <input type="text" class="form-control" value="{{ location_data.latitude }}" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <span class="input-group-text bg-secondary">Longitude</span>
+                                <input type="text" class="form-control" value="{{ location_data.longitude }}" readonly>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Map container -->
+                    <div class="mb-3">
+                        {% if google_maps_api_key %}
+                        <!-- Google Maps Static Map -->
+                        <div class="mb-3 text-center">
+                            <img src="https://maps.googleapis.com/maps/api/staticmap?center={{ location_data.latitude }},{{ location_data.longitude }}&zoom=15&size=600x300&markers=color:red%7C{{ location_data.latitude }},{{ location_data.longitude }}&key={{ google_maps_api_key }}"
+                                 alt="Location Map"
+                                 class="img-fluid rounded"
+                                 style="max-width: 100%;">
+                        </div>
+                        {% else %}
+                        <!-- Leaflet Map -->
+                        <div id="map" class="mb-3" style="height: 300px;" data-lat="{{ location_data.latitude }}" data-lng="{{ location_data.longitude }}"></div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mt-3">
+                        <a href="https://www.google.com/maps/search/?api=1&query={{ location_data.latitude }},{{ location_data.longitude }}" 
+                           class="btn btn-outline-primary" 
+                           target="_blank">
+                            <i class="fas fa-external-link-alt me-1"></i> View on Google Maps
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Street View Section -->
+            {% if location_data.street_view_metadata and location_data.street_view_metadata.status == "OK" %}
+            <div class="card location-card mb-4">
+                <div class="card-body">
+                    <h2 class="h5 mb-3">Street View</h2>
+                    
+                    <div class="alert alert-info mb-3">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Street View imagery from {{ location_data.street_view_metadata.date }}
+                    </div>
+                    
+                    <!-- Embedded Street View -->
+                    <div class="ratio ratio-16x9 mb-3">
+                        <iframe 
+                            src="https://www.google.com/maps/embed/v1/streetview?key={{ google_maps_api_key }}&location={{ location_data.latitude }},{{ location_data.longitude }}&heading={{ location_data.street_view_metadata.heading|default(210) }}&pitch=10&fov=90"
+                            allowfullscreen
+                            loading="lazy"
+                            referrerpolicy="no-referrer-when-downgrade"
+                            style="border: 0;">
+                        </iframe>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+                <div class="alert alert-warning mb-3">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Street View imagery is not available for this exact location.
+                </div>
+                
+                <!-- Static Map as Fallback -->
+                <div class="text-center mb-3">
+                    <img src="https://maps.googleapis.com/maps/api/staticmap?center={{ location_data.latitude }},{{ location_data.longitude }}&zoom=16&size=600x300&markers=color:red%7C{{ location_data.latitude }},{{ location_data.longitude }}&key={{ google_maps_api_key }}" 
+                         class="img-fluid img-thumbnail" 
+                         alt="Map of Property Location">
+                </div>
+            {% endif %}
+            
+            <!-- Location Hints from Description -->
+            {% if location_data.location_hints and location_data.location_hints|length > 0 %}
+            <div class="card location-card mb-4">
+                <div class="card-body">
+                    <h2 class="h5 mb-3">Location Hints from Listing</h2>
+                    
+                    <div class="alert alert-info mb-3">
+                        <i class="fas fa-info-circle me-2"></i>
+                        These hints were extracted from the listing description and reviews
+                    </div>
+                    
+                    <ul class="list-group">
+                        {% for hint in location_data.location_hints %}
+                        <li class="list-group-item">
+                            <i class="fas fa-map-pin me-2 text-primary"></i>
+                            {{ hint }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize the map with the property's coordinates when the page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        // Copy address to clipboard
+        document.getElementById('copy-address').addEventListener('click', function() {
+            var addressInput = document.getElementById('property-address');
+            copyToClipboard(addressInput.value);
+            
+            var tooltip = bootstrap.Tooltip.getInstance(this);
+            tooltip.hide();
+            this.setAttribute('data-bs-original-title', 'Copied!');
+            tooltip = new bootstrap.Tooltip(this);
+            tooltip.show();
+            
+            setTimeout(() => {
+                this.setAttribute('data-bs-original-title', 'Copy to clipboard');
+                tooltip = new bootstrap.Tooltip(this);
+            }, 2000);
+        });
+        
+        // Initialize tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,437 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<style>
+    /* Modern Quick Verify Page Styling */
+    :root {
+        --primary-color: #6366f1;
+        --primary-dark: #4f46e5;
+        --success-color: #10b981;
+        --warning-color: #f59e0b;
+        --danger-color: #ef4444;
+        --info-color: #3b82f6;
+        --dark: #1f2937;
+        --light-gray: #f3f4f6;
+        --border-radius: 12px;
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+
+    .verify-container {
+        max-width: 600px;
+        margin: 3rem auto;
+        padding: 0 1rem;
+    }
+
+    .verify-card {
+        background: white;
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow-lg);
+        padding: 2.5rem;
+    }
+
+    .verify-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .verify-icon {
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, var(--primary-color) 0%, #8b5cf6 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
+        color: white;
+        font-size: 2rem;
+    }
+
+    .verify-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--dark);
+        margin-bottom: 0.5rem;
+    }
+
+    .verify-subtitle {
+        color: #6b7280;
+        font-size: 1.125rem;
+    }
+
+    .url-input-group {
+        position: relative;
+        margin-bottom: 1.5rem;
+    }
+
+    .url-input {
+        width: 100%;
+        padding: 1rem 1rem 1rem 3rem;
+        border: 2px solid #e5e7eb;
+        border-radius: var(--border-radius);
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        background: white;
+    }
+
+    .url-input:focus {
+        border-color: var(--primary-color);
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    .url-input.is-invalid {
+        border-color: var(--danger-color);
+        background: #fef2f2;
+    }
+
+    .url-icon {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #9ca3af;
+    }
+
+    .error-message {
+        display: none;
+        color: var(--danger-color);
+        font-size: 0.875rem;
+        margin-top: 0.5rem;
+    }
+
+    .error-message.show {
+        display: block;
+        animation: fadeIn 0.3s ease;
+    }
+
+    .verify-button {
+        width: 100%;
+        padding: 1rem 2rem;
+        background: linear-gradient(135deg, var(--primary-color) 0%, #8b5cf6 100%);
+        color: white;
+        border: none;
+        border-radius: var(--border-radius);
+        font-size: 1.125rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .verify-button:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .verify-button:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
+
+    .verify-button.loading {
+        color: transparent;
+    }
+
+    /* Loading State */
+    .loading-spinner {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 24px;
+        height: 24px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+
+    .processing-status {
+        display: none;
+        margin-top: 1.5rem;
+        padding: 1rem;
+        background: var(--light-gray);
+        border-radius: var(--border-radius);
+        text-align: center;
+    }
+
+    .processing-status.show {
+        display: block;
+        animation: fadeIn 0.3s ease;
+    }
+
+    .status-message {
+        font-size: 0.875rem;
+        color: #6b7280;
+        margin-top: 0.5rem;
+    }
+
+    .progress-bar {
+        width: 100%;
+        height: 8px;
+        background: #e5e7eb;
+        border-radius: 50px;
+        overflow: hidden;
+        margin-top: 1rem;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--primary-color) 0%, #8b5cf6 100%);
+        border-radius: 50px;
+        width: 0%;
+        transition: width 0.5s ease;
+        animation: shimmer 2s ease-in-out infinite;
+    }
+
+    @keyframes shimmer {
+        0% { opacity: 0.8; }
+        50% { opacity: 1; }
+        100% { opacity: 0.8; }
+    }
+
+    @keyframes fadeIn {
+        from { 
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to { 
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-top: 2rem;
+        padding-top: 2rem;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .feature-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        color: #6b7280;
+        font-size: 0.875rem;
+    }
+
+    .feature-icon {
+        color: var(--success-color);
+        font-size: 1.125rem;
+    }
+
+    @media (max-width: 640px) {
+        .verify-card {
+            padding: 1.5rem;
+        }
+        
+        .verify-title {
+            font-size: 1.5rem;
+        }
+        
+        .features-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="verify-container">
+    <div class="verify-card">
+        <div class="verify-header">
+            <div class="verify-icon">
+                <i class="fas fa-bolt"></i>
+            </div>
+            <h1 class="verify-title">Quick Location Verification</h1>
+            <p class="verify-subtitle">Get instant results in 10 seconds or less</p>
+        </div>
+
+        <form id="quickVerifyForm" method="POST" action="{{ url_for('quick_verify_handler') }}">
+            <div class="url-input-group">
+                <i class="fas fa-link url-icon"></i>
+                <input 
+                    type="url" 
+                    name="airbnb_url" 
+                    class="url-input" 
+                    id="urlInput"
+                    placeholder="https://www.airbnb.com/rooms/..." 
+                    required
+                    pattern="https?://.*airbnb\.com/.*"
+                    value="{{ request.form.get('airbnb_url', '') }}"
+                />
+                <div class="error-message" id="urlError">
+                    Please enter a valid Airbnb listing URL
+                </div>
+            </div>
+
+            <button type="submit" class="verify-button" id="verifyBtn">
+                <span class="button-text">Start Quick Verification</span>
+                <div class="loading-spinner" style="display: none;"></div>
+            </button>
+
+            <div class="processing-status" id="processingStatus">
+                <div class="status-message" id="statusMessage">
+                    <i class="fas fa-search"></i> Analyzing listing...
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+            </div>
+        </form>
+
+        <div class="features-grid">
+            <div class="feature-item">
+                <i class="fas fa-check-circle feature-icon"></i>
+                <span>10-second results</span>
+            </div>
+            <div class="feature-item">
+                <i class="fas fa-check-circle feature-icon"></i>
+                <span>Multiple data sources</span>
+            </div>
+            <div class="feature-item">
+                <i class="fas fa-check-circle feature-icon"></i>
+                <span>Confidence scoring</span>
+            </div>
+            <div class="feature-item">
+                <i class="fas fa-check-circle feature-icon"></i>
+                <span>Maps & Street View</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('quickVerifyForm');
+    const urlInput = document.getElementById('urlInput');
+    const urlError = document.getElementById('urlError');
+    const verifyBtn = document.getElementById('verifyBtn');
+    const processingStatus = document.getElementById('processingStatus');
+    const statusMessage = document.getElementById('statusMessage');
+    const progressFill = document.getElementById('progressFill');
+    const buttonText = verifyBtn.querySelector('.button-text');
+    const spinner = verifyBtn.querySelector('.loading-spinner');
+    
+    // URL validation pattern
+    const airbnbPattern = /^https?:\/\/(www\.)?airbnb\.(com|[a-z]{2,3})\/rooms\/\d+/i;
+    
+    // Validate URL on input
+    urlInput.addEventListener('input', function() {
+        if (urlInput.value && !airbnbPattern.test(urlInput.value)) {
+            urlInput.classList.add('is-invalid');
+            urlError.classList.add('show');
+        } else {
+            urlInput.classList.remove('is-invalid');
+            urlError.classList.remove('show');
+        }
+    });
+    
+    // Handle form submission
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const url = urlInput.value.trim();
+        
+        // Validate URL format
+        if (!airbnbPattern.test(url)) {
+            urlInput.classList.add('is-invalid');
+            urlError.classList.add('show');
+            urlError.textContent = 'Please enter a valid Airbnb listing URL (e.g., https://www.airbnb.com/rooms/123456)';
+            return;
+        }
+        
+        // Show loading state
+        verifyBtn.disabled = true;
+        verifyBtn.classList.add('loading');
+        buttonText.style.display = 'none';
+        spinner.style.display = 'block';
+        processingStatus.classList.add('show');
+        
+        // Simulate progress
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+            progress = Math.min(progress + 10, 90);
+            progressFill.style.width = progress + '%';
+        }, 1000);
+        
+        // Status messages
+        const messages = [
+            '<i class="fas fa-search"></i> Extracting listing data...',
+            '<i class="fas fa-map-marked-alt"></i> Analyzing location signals...',
+            '<i class="fas fa-eye"></i> Processing visual elements...',
+            '<i class="fas fa-check"></i> Calculating confidence score...'
+        ];
+        
+        let messageIndex = 0;
+        const messageInterval = setInterval(() => {
+            if (messageIndex < messages.length) {
+                statusMessage.innerHTML = messages[messageIndex];
+                messageIndex++;
+            }
+        }, 2500);
+        
+        try {
+            // Submit the form
+            const response = await fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams({
+                    'airbnb_url': url
+                })
+            });
+            
+            if (response.ok) {
+                // Check if it's a redirect
+                if (response.redirected) {
+                    // Complete the progress bar
+                    clearInterval(progressInterval);
+                    clearInterval(messageInterval);
+                    progressFill.style.width = '100%';
+                    statusMessage.innerHTML = '<i class="fas fa-check-circle"></i> Verification complete!';
+                    
+                    // Redirect after a brief moment
+                    setTimeout(() => {
+                        window.location.href = response.url;
+                    }, 500);
+                } else {
+                    // Handle non-redirect response
+                    const data = await response.text();
+                    document.documentElement.innerHTML = data;
+                }
+            } else {
+                throw new Error('Verification failed. Please try again.');
+            }
+            
+        } catch (error) {
+            // Clear intervals
+            clearInterval(progressInterval);
+            clearInterval(messageInterval);
+            
+            // Show error state
+            verifyBtn.disabled = false;
+            verifyBtn.classList.remove('loading');
+            buttonText.style.display = 'block';
+            spinner.style.display = 'none';
+            processingStatus.classList.remove('show');
+            
+            // Display error message
+            urlError.textContent = error.message || 'An error occurred. Please try again.';
+            urlError.classList.add('show');
+            urlInput.classList.add('is-invalid');
+        }
+    });
+});
+</script>
+{% endblock %}

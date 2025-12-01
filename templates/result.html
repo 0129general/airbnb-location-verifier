@@ -1,0 +1,1347 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<!-- Modern Result Display with Gradients and Enhanced Visualization -->
+<style>
+    /* Modern Gradient Styles */
+    .status-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2.5rem 0;
+        margin-bottom: 2rem;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .status-header::after {
+        content: "";
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        animation: float 20s ease-in-out infinite;
+    }
+    
+    @keyframes float {
+        0%, 100% { transform: translate(0, 0) rotate(0deg); }
+        50% { transform: translate(-10%, 10%) rotate(180deg); }
+    }
+    
+    .status-badge {
+        display: inline-block;
+        padding: 0.75rem 2rem;
+        border-radius: 50px;
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+    
+    .status-verified {
+        background: linear-gradient(135deg, #00b09b 0%, #96c93d 100%);
+        color: white;
+    }
+    
+    .status-approximate {
+        background: linear-gradient(135deg, #f5af19 0%, #f12711 100%);
+        color: white;
+    }
+    
+    .status-low-confidence {
+        background: linear-gradient(135deg, #fc4a1a 0%, #f7b733 100%);
+        color: white;
+    }
+    
+    .confidence-gauge {
+        width: 200px;
+        height: 200px;
+        margin: 0 auto;
+        position: relative;
+    }
+    
+    .confidence-circle {
+        stroke-dasharray: 440;
+        stroke-dashoffset: 440;
+        stroke-width: 15;
+        fill: none;
+        stroke-linecap: round;
+        transform: rotate(-90deg);
+        transform-origin: 50% 50%;
+        animation: fillCircle 2s ease-out forwards;
+    }
+    
+    @keyframes fillCircle {
+        to {
+            stroke-dashoffset: var(--offset);
+        }
+    }
+    
+    .confidence-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: white;
+    }
+    
+    .result-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        margin-bottom: 1.5rem;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        border: 1px solid rgba(0,0,0,0.06);
+    }
+    
+    .result-card:hover {
+        box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+        transform: translateY(-2px);
+    }
+    
+    .result-card-header {
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid rgba(0,0,0,0.06);
+        cursor: pointer;
+        transition: background 0.3s ease;
+    }
+    
+    .result-card-header:hover {
+        background: rgba(102, 126, 234, 0.05);
+    }
+    
+    .result-card-header.gradient-accent {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    }
+    
+    .address-display {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 16px;
+        margin-bottom: 2rem;
+        position: relative;
+    }
+    
+    .address-text {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+    
+    .address-meta {
+        display: flex;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+        opacity: 0.95;
+    }
+    
+    .signal-bar {
+        height: 30px;
+        background: #e9ecef;
+        border-radius: 15px;
+        overflow: hidden;
+        position: relative;
+    }
+    
+    .signal-fill {
+        height: 100%;
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        padding: 0 1rem;
+        color: white;
+        font-weight: 600;
+        font-size: 0.875rem;
+        transition: width 1.5s ease-out;
+    }
+    
+    .signal-ocr {
+        background: linear-gradient(90deg, #667eea, #764ba2);
+    }
+    
+    .signal-nlp {
+        background: linear-gradient(90deg, #00b09b, #96c93d);
+    }
+    
+    .signal-visual {
+        background: linear-gradient(90deg, #f093fb, #f5576c);
+    }
+    
+    .signal-geocode {
+        background: linear-gradient(90deg, #fa709a, #fee140);
+    }
+    
+    .action-button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 1rem 2rem;
+        border-radius: 12px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        margin: 0.5rem;
+    }
+    
+    .action-button::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        transition: left 0.5s ease;
+    }
+    
+    .action-button:hover::before {
+        left: 100%;
+    }
+    
+    .action-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        color: white;
+    }
+    
+    .map-container {
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        position: relative;
+    }
+    
+    .map-legend {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: white;
+        padding: 1rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        z-index: 1000;
+    }
+    
+    .collapsible-icon {
+        transition: transform 0.3s ease;
+    }
+    
+    .collapsed .collapsible-icon {
+        transform: rotate(-90deg);
+    }
+    
+    .analysis-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1rem;
+    }
+    
+    .stat-card {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+        border: 1px solid rgba(102, 126, 234, 0.2);
+    }
+    
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    
+    .stat-label {
+        color: #6c757d;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+</style>
+
+<div class="container-fluid px-0">
+    <!-- Verification Status Header -->
+    <div class="status-header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <div class="position-relative">
+                        <!-- Back Button -->
+                        <a href="{{ url_for('index') }}" class="btn btn-light btn-sm mb-3">
+                            <i class="fas fa-arrow-left me-2"></i> Back to Home
+                        </a>
+                        
+                        <h1 class="display-4 fw-bold mb-3">Location Verification Complete</h1>
+                        
+                        <!-- Status Badge -->
+                        {% if location_data.confidence_score %}
+                            {% if location_data.confidence_score >= 70 %}
+                                <span class="status-badge status-verified">
+                                    <i class="fas fa-check-circle me-2"></i> Verified Address
+                                </span>
+                            {% elif location_data.confidence_score >= 50 %}
+                                <span class="status-badge status-approximate">
+                                    <i class="fas fa-exclamation-circle me-2"></i> Approximate Location
+                                </span>
+                            {% else %}
+                                <span class="status-badge status-low-confidence">
+                                    <i class="fas fa-question-circle me-2"></i> Low Confidence
+                                </span>
+                            {% endif %}
+                        {% else %}
+                            <span class="status-badge status-approximate">
+                                <i class="fas fa-info-circle me-2"></i> Location Found
+                            </span>
+                        {% endif %}
+                        
+                        <!-- Quick Stats -->
+                        <div class="d-flex gap-4 mt-3 flex-wrap">
+                            {% if location_data.address_source %}
+                            <div>
+                                <small class="opacity-75">Source</small>
+                                <div class="fw-semibold">{{ location_data.address_source|replace('_', ' ')|title }}</div>
+                            </div>
+                            {% endif %}
+                            {% if location_data.multi_signal_scoring and location_data.multi_signal_scoring.evidence and location_data.multi_signal_scoring.evidence.distance_meters %}
+                            <div>
+                                <small class="opacity-75">Distance Accuracy</small>
+                                <div class="fw-semibold">{{ location_data.multi_signal_scoring.evidence.distance_meters }}m</div>
+                            </div>
+                            {% endif %}
+                            {% if location_data.multi_signal_scoring and location_data.multi_signal_scoring.evidence and location_data.multi_signal_scoring.evidence.signals_used %}
+                            <div>
+                                <small class="opacity-75">Signals Used</small>
+                                <div class="fw-semibold">{{ location_data.multi_signal_scoring.evidence.signals_used|length }}/4</div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Confidence Gauge -->
+                <div class="col-lg-4 text-center">
+                    {% if location_data.confidence_score or (location_data.multi_signal_scoring and location_data.multi_signal_scoring.confidence_score) %}
+                    {% set conf_score = location_data.confidence_score or location_data.multi_signal_scoring.confidence_score %}
+                    <div class="confidence-gauge">
+                        <svg width="200" height="200">
+                            <circle cx="100" cy="100" r="70" stroke="rgba(255,255,255,0.2)" stroke-width="15" fill="none"></circle>
+                            <circle class="confidence-circle" cx="100" cy="100" r="70" 
+                                    stroke="{% if conf_score >= 70 %}#96c93d{% elif conf_score >= 50 %}#f5af19{% else %}#fc4a1a{% endif %}"
+                                    style="--offset: {{ 440 - (440 * conf_score / 100) }}"></circle>
+                        </svg>
+                        <div class="confidence-text">{{ conf_score|round|int }}%</div>
+                    </div>
+                    <div class="mt-2 opacity-75">Confidence Score</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container mt-4">
+    <!-- Address Display Section -->
+    {% if location_data.address %}
+    <div class="address-display">
+        <div class="row align-items-center">
+            <div class="col-lg-9">
+                <div class="d-flex align-items-center mb-2">
+                    <i class="fas fa-map-marker-alt me-3" style="font-size: 2rem;"></i>
+                    <div>
+                        <div class="small opacity-75">Best Verified Address</div>
+                        <div class="address-text">{{ location_data.address }}</div>
+                    </div>
+                </div>
+                
+                <div class="address-meta">
+                    {% if location_data.confidence_level %}
+                    <span>
+                        <i class="fas fa-shield-alt me-1"></i>
+                        {{ location_data.confidence_level }}
+                    </span>
+                    {% endif %}
+                    {% if location_data.address_source %}
+                    <span>
+                        <i class="fas fa-database me-1"></i>
+                        Source: {{ location_data.address_source|replace('_', ' ')|title }}
+                    </span>
+                    {% endif %}
+                    {% if location_data.latitude and location_data.longitude %}
+                    <span>
+                        <i class="fas fa-globe me-1"></i>
+                        {{ location_data.latitude|round(4) }}, {{ location_data.longitude|round(4) }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="col-lg-3 text-lg-end mt-3 mt-lg-0">
+                <button class="btn btn-light" onclick="copyAddress()" id="copy-address-btn">
+                    <i class="fas fa-copy me-2"></i> Copy Address
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Quick Actions Bar -->
+    <div class="text-center mb-4">
+        <div class="d-inline-flex flex-wrap justify-content-center">
+            {% if location_data.latitude and location_data.longitude %}
+            <a href="https://www.google.com/maps/search/?api=1&query={{ location_data.latitude }},{{ location_data.longitude }}" 
+               class="action-button" target="_blank">
+                <i class="fas fa-map me-2"></i> Open in Google Maps
+            </a>
+            {% endif %}
+            
+            <a href="{{ original_url }}" class="action-button" target="_blank" style="background: linear-gradient(135deg, #ff5f6d 0%, #ffc371 100%);">
+                <i class="fas fa-home me-2"></i> View Airbnb Listing
+            </a>
+            
+            <button class="action-button" onclick="window.print()" style="background: linear-gradient(135deg, #00b09b 0%, #96c93d 100%);">
+                <i class="fas fa-download me-2"></i> Export Results
+            </button>
+            
+            <a href="{{ url_for('index') }}" class="action-button" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <i class="fas fa-redo me-2"></i> New Verification
+            </a>
+        </div>
+    </div>
+    
+    <!-- Signal Scores Visualization -->
+    {% if location_data.multi_signal_scoring and location_data.multi_signal_scoring.contributions %}
+    <div class="result-card">
+        <div class="result-card-header gradient-accent">
+            <h4 class="mb-0">
+                <i class="fas fa-chart-bar me-2"></i> Signal Analysis Scores
+            </h4>
+        </div>
+        <div class="card-body p-4">
+            <div class="row g-4">
+                {% for component, details in location_data.multi_signal_scoring.contributions.items() %}
+                <div class="col-md-6">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="fw-semibold">
+                            {% if component == 'ocr_score' %}
+                                <i class="fas fa-camera me-1"></i> OCR (Image Text)
+                            {% elif component == 'nlp_score' %}
+                                <i class="fas fa-font me-1"></i> NLP (Description)
+                            {% elif component == 'geocode_score' %}
+                                <i class="fas fa-map-pin me-1"></i> Geocoding
+                            {% elif component == 'visual_score' %}
+                                <i class="fas fa-eye me-1"></i> Visual Analysis
+                            {% else %}
+                                {{ component.replace('_', ' ')|title }}
+                            {% endif %}
+                        </span>
+                        <span class="text-muted">{{ details.contribution|round(1) }}% contribution</span>
+                    </div>
+                    <div class="signal-bar">
+                        <div class="signal-fill signal-{{ component.split('_')[0] }}" 
+                             style="width: {{ details.percentage_of_max }}%;">
+                            {{ details.score|round|int }}/100
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Overall Stats -->
+            <div class="analysis-grid mt-4">
+                <div class="stat-card">
+                    <div class="stat-value">{{ location_data.multi_signal_scoring.confidence_score|round|int }}%</div>
+                    <div class="stat-label">Overall Confidence</div>
+                </div>
+                {% if location_data.multi_signal_scoring.evidence and location_data.multi_signal_scoring.evidence.signals_used %}
+                <div class="stat-card">
+                    <div class="stat-value">{{ location_data.multi_signal_scoring.evidence.signals_used|length }}</div>
+                    <div class="stat-label">Signals Used</div>
+                </div>
+                {% endif %}
+                {% if location_data.multi_signal_scoring.all_candidates %}
+                <div class="stat-card">
+                    <div class="stat-value">{{ location_data.multi_signal_scoring.all_candidates|length }}</div>
+                    <div class="stat-label">Addresses Analyzed</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Interactive Map Section -->
+    <div class="result-card">
+        <div class="result-card-header">
+            <h4 class="mb-0">
+                <i class="fas fa-map-marked-alt me-2"></i> Location Map
+            </h4>
+        </div>
+        <div class="card-body p-0">
+            <div class="map-container">
+                {% if google_maps_api_key %}
+                <!-- Google Maps Static Map -->
+                <img src="https://maps.googleapis.com/maps/api/staticmap?center={{ location_data.latitude }},{{ location_data.longitude }}&zoom=16&size=800x400&scale=2&markers=color:red%7Clabel:V%7C{{ location_data.latitude }},{{ location_data.longitude }}&key={{ google_maps_api_key }}"
+                     alt="Location Map"
+                     class="img-fluid w-100">
+                {% else %}
+                <!-- Leaflet Map -->
+                <div id="map" style="height: 400px;" data-lat="{{ location_data.latitude }}" data-lng="{{ location_data.longitude }}"></div>
+                {% endif %}
+                
+                <div class="map-legend">
+                    <div class="small fw-semibold mb-2">Map Legend</div>
+                    <div class="d-flex align-items-center mb-1">
+                        <div style="width: 12px; height: 12px; background: #ff4444; border-radius: 50%; margin-right: 8px;"></div>
+                        <small>Verified Location</small>
+                    </div>
+                    {% if location_data.original_lat and location_data.original_lng %}
+                    <div class="d-flex align-items-center">
+                        <div style="width: 12px; height: 12px; background: #4444ff; border-radius: 50%; margin-right: 8px;"></div>
+                        <small>Original Coordinates</small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Deep Analysis Evidence Breakdown (if thorough mode) -->
+    {% if location_data.evidence_breakdown and location_data.processing_mode == 'deep' %}
+    <div class="result-card mb-4">
+        <div class="result-card-header gradient-accent">
+            <h4 class="mb-0">
+                <i class="fas fa-microscope me-2"></i> Deep Analysis Evidence Breakdown
+            </h4>
+        </div>
+        <div class="card-body p-4">
+            <!-- Processing Summary -->
+            <div class="row mb-4">
+                <div class="col-md-3 text-center">
+                    <div class="stat-card">
+                        <i class="fas fa-clock text-primary mb-2" style="font-size: 2rem;"></i>
+                        <div class="stat-value">{{ location_data.processing_time_seconds|round(1) }}s</div>
+                        <div class="stat-label">Processing Time</div>
+                    </div>
+                </div>
+                <div class="col-md-3 text-center">
+                    <div class="stat-card">
+                        <i class="fas fa-images text-info mb-2" style="font-size: 2rem;"></i>
+                        <div class="stat-value">{% if location_data.photos %}{{ location_data.photos|length }}{% else %}0{% endif %}</div>
+                        <div class="stat-label">Photos Analyzed</div>
+                    </div>
+                </div>
+                <div class="col-md-3 text-center">
+                    <div class="stat-card">
+                        <i class="fas fa-signal text-success mb-2" style="font-size: 2rem;"></i>
+                        <div class="stat-value">{{ location_data.evidence_breakdown.signals_used|length }}</div>
+                        <div class="stat-label">Signals Used</div>
+                    </div>
+                </div>
+                <div class="col-md-3 text-center">
+                    <div class="stat-card">
+                        <i class="fas fa-map-marked-alt text-warning mb-2" style="font-size: 2rem;"></i>
+                        <div class="stat-value">{{ location_data.address_candidates|length if location_data.address_candidates else 1 }}</div>
+                        <div class="stat-label">Candidates Analyzed</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Processing Stages Timeline -->
+            <h6 class="fw-semibold mb-3"><i class="fas fa-stream me-2"></i> Processing Stages</h6>
+            <div class="mb-4">
+                {% for stage in location_data.evidence_breakdown.processing_stages %}
+                <div class="d-flex align-items-center mb-2">
+                    <div class="badge bg-primary me-3">{{ loop.index }}</div>
+                    <div class="flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fw-semibold">{{ stage|replace('_', ' ')|title }}</span>
+                            {% if location_data.evidence_breakdown.timing[stage] %}
+                            <small class="text-muted">{{ location_data.evidence_breakdown.timing[stage]|round(2) }}s</small>
+                            {% endif %}
+                        </div>
+                        {% if location_data.evidence_breakdown.timing[stage] %}
+                        <div class="progress mt-1" style="height: 4px;">
+                            <div class="progress-bar" 
+                                 style="width: {{ (location_data.evidence_breakdown.timing[stage] / location_data.evidence_breakdown.timing.total * 100)|round }}%">
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Confidence Components Breakdown -->
+            {% if location_data.evidence_breakdown.confidence_components %}
+            <h6 class="fw-semibold mb-3"><i class="fas fa-chart-pie me-2"></i> Confidence Components</h6>
+            <div class="row">
+                {% for component, score in location_data.evidence_breakdown.confidence_components.items() %}
+                <div class="col-md-6 mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>{{ component|replace('_', ' ')|title }}</span>
+                        <span class="fw-semibold">{{ score|round|int }}%</span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar" 
+                             style="width: {{ score }}%; background: linear-gradient(90deg, #667eea, #764ba2);">
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Street View Data Section -->
+    {% if location_data.street_view_metadata or (location_data.latitude and location_data.longitude) %}
+    <div class="result-card mb-4">
+        <div class="result-card-header">
+            <h4 class="mb-0">
+                <i class="fas fa-street-view me-2"></i> Street View Analysis
+            </h4>
+        </div>
+        <div class="card-body p-4">
+            <!-- Street View Status and Metadata -->
+            {% if location_data.street_view_metadata %}
+            <div class="row mb-3">
+                <div class="col-md-12">
+                    {% if location_data.street_view_metadata.available %}
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <strong>Street View Available</strong> - Visual verification possible
+                    </div>
+                    <div class="row mb-3">
+                        {% if location_data.street_view_metadata.panorama_id %}
+                        <div class="col-md-6">
+                            <strong>Panorama ID:</strong> <code>{{ location_data.street_view_metadata.panorama_id[:20] }}...</code>
+                        </div>
+                        {% endif %}
+                        {% if location_data.street_view_metadata.date %}
+                        <div class="col-md-6">
+                            <strong>Imagery Date:</strong> {{ location_data.street_view_metadata.date }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if location_data.street_view_match %}
+                    <h6 class="fw-semibold mb-2">Visual Match Results</h6>
+                    <div class="p-3 bg-light rounded mb-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Match Confidence:</span>
+                            <strong>{{ location_data.street_view_match.confidence|round|int }}%</strong>
+                        </div>
+                        {% if location_data.street_view_match.features_matched %}
+                        <small class="text-muted">Matched features: {{ location_data.street_view_match.features_matched|join(', ') }}</small>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Street View Not Available</strong> - {{ location_data.street_view_metadata.error_message|default('No street view imagery at this location') }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Interactive Street View Section -->
+            {% if location_data.latitude and location_data.longitude %}
+            <ul class="nav nav-tabs mb-3" id="deepStreetViewTabs" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link active" id="deep-interactive-tab" data-bs-toggle="tab" data-bs-target="#deep-interactive-view" type="button">
+                        <i class="fas fa-street-view"></i> Interactive View
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" id="deep-static-tab" data-bs-toggle="tab" data-bs-target="#deep-static-view" type="button">
+                        <i class="fas fa-image"></i> Static Preview
+                    </button>
+                </li>
+            </ul>
+            
+            <div class="tab-content" id="deepStreetViewTabContent">
+                <!-- Interactive Street View Tab -->
+                <div class="tab-pane fade show active" id="deep-interactive-view">
+                    {% if google_maps_api_key %}
+                    <iframe
+                        id="deep-street-view-iframe"
+                        width="100%"
+                        height="500"
+                        style="border:0; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"
+                        loading="lazy"
+                        allowfullscreen
+                        referrerpolicy="no-referrer-when-downgrade"
+                        src="https://www.google.com/maps/embed/v1/streetview?key={{ google_maps_api_key }}&location={{ location_data.latitude }},{{ location_data.longitude }}&heading=0&pitch=0&fov=90">
+                    </iframe>
+                    <div class="mt-3">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="resetDeepStreetView()">
+                            <i class="fas fa-redo"></i> Reset View
+                        </button>
+                    </div>
+                    {% else %}
+                    <div class="text-center p-5 bg-light rounded">
+                        <i class="fas fa-street-view fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">Interactive Street View requires Google Maps API key</p>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Static Street View Tab -->
+                <div class="tab-pane fade" id="deep-static-view">
+                    <div id="deep-street-view-static" style="width: 100%; height: 500px; position: relative;">
+                        {% if google_maps_api_key %}
+                        <img 
+                            src="https://maps.googleapis.com/maps/api/streetview?size=800x500&location={{ location_data.latitude }},{{ location_data.longitude }}&key={{ google_maps_api_key }}"
+                            style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;"
+                            alt="Street View Static"
+                            onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'text-center p-5 bg-light rounded\'><i class=\'fas fa-street-view fa-3x text-muted mb-3\'></i><p class=\'text-muted\'>Street View is not available for this location</p></div>';">
+                        {% else %}
+                        <div class="text-center p-5 bg-light rounded">
+                            <i class="fas fa-street-view fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">Static Street View requires Google Maps API key</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- External Link Button -->
+            <div class="mt-3">
+                <a href="https://www.google.com/maps/@{{ location_data.latitude }},{{ location_data.longitude }},3a,75y,0h,90t" 
+                   target="_blank" class="btn btn-primary">
+                    <i class="fas fa-external-link-alt me-2"></i> Open in Google Maps
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Visual Clues and Landmarks Section -->
+    {% if location_data.landmarks or location_data.building_features %}
+    <div class="result-card mb-4">
+        <div class="result-card-header gradient-accent">
+            <h4 class="mb-0">
+                <i class="fas fa-landmark me-2"></i> Visual Clues & Landmarks
+            </h4>
+        </div>
+        <div class="card-body p-4">
+            <div class="row">
+                {% if location_data.landmarks %}
+                <div class="col-md-6">
+                    <h6 class="fw-semibold mb-3"><i class="fas fa-map-pin me-2"></i> Detected Landmarks</h6>
+                    <ul class="list-unstyled">
+                        {% for landmark in location_data.landmarks[:8] %}
+                        <li class="mb-2">
+                            <div class="d-flex align-items-start">
+                                <i class="fas fa-landmark text-warning me-2 mt-1"></i>
+                                <div>
+                                    <div>{{ landmark.name|default(landmark) }}</div>
+                                    {% if landmark.distance %}
+                                    <small class="text-muted">{{ landmark.distance }} away</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                
+                {% if location_data.building_features %}
+                <div class="col-md-6">
+                    <h6 class="fw-semibold mb-3"><i class="fas fa-building me-2"></i> Building Features</h6>
+                    <ul class="list-unstyled">
+                        {% for feature in location_data.building_features[:8] %}
+                        <li class="mb-2">
+                            <div class="d-flex align-items-start">
+                                <i class="fas fa-check-circle text-success me-2 mt-1"></i>
+                                <div>
+                                    <div>{{ feature.name|default(feature) }}</div>
+                                    {% if feature.confidence %}
+                                    <small class="text-muted">Confidence: {{ feature.confidence }}%</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Address Candidates Ranking (Enhanced) -->
+    {% if location_data.address_candidates and location_data.processing_mode == 'deep' %}
+    <div class="result-card mb-4">
+        <div class="result-card-header">
+            <h4 class="mb-0">
+                <i class="fas fa-trophy me-2"></i> Ranked Address Candidates
+            </h4>
+        </div>
+        <div class="card-body p-4">
+            <p class="text-muted mb-3">All potential addresses analyzed and ranked by confidence score:</p>
+            
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th width="5%">Rank</th>
+                            <th width="35%">Address</th>
+                            <th width="15%">Source</th>
+                            <th width="15%">Confidence</th>
+                            <th width="30%">Evidence</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for candidate in location_data.address_candidates[:10] %}
+                        <tr {% if loop.first %}class="table-success fw-semibold"{% endif %}>
+                            <td>
+                                {% if loop.first %}
+                                <span class="badge bg-success"><i class="fas fa-crown"></i> Best</span>
+                                {% else %}
+                                <span class="badge bg-secondary">#{{ loop.index }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ candidate.address }}</td>
+                            <td>
+                                <span class="badge bg-info">{{ candidate.source|replace('_', ' ')|title }}</span>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="progress flex-grow-1 me-2" style="height: 20px;">
+                                        <div class="progress-bar" 
+                                             style="width: {{ candidate.confidence }}%; background: linear-gradient(90deg, #667eea, #764ba2);">
+                                        </div>
+                                    </div>
+                                    <span>{{ candidate.confidence|round|int }}%</span>
+                                </div>
+                            </td>
+                            <td>
+                                {% if candidate.ocr_evidence %}
+                                <span class="badge bg-warning me-1" title="OCR Detection">
+                                    <i class="fas fa-camera"></i> OCR
+                                </span>
+                                {% endif %}
+                                {% if candidate.property_details %}
+                                <span class="badge bg-primary me-1" title="Property Match">
+                                    <i class="fas fa-home"></i> Property
+                                </span>
+                                {% endif %}
+                                {% if candidate.visual_match %}
+                                <span class="badge bg-success me-1" title="Visual Match">
+                                    <i class="fas fa-eye"></i> Visual
+                                </span>
+                                {% endif %}
+                                {% if candidate.distance %}
+                                <small class="text-muted">{{ candidate.distance }}m away</small>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% if location_data.address_candidates|length > 10 %}
+                <p class="text-muted text-center small mt-2">
+                    Showing top 10 of {{ location_data.address_candidates|length }} analyzed candidates
+                </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Detailed Analysis Results in Collapsible Cards -->
+    <div class="row">
+        <!-- OCR Results -->
+        {% if location_data.multi_signal_scoring and location_data.multi_signal_scoring.evidence and location_data.multi_signal_scoring.evidence.image_snippets %}
+        <div class="col-lg-6">
+            <div class="result-card">
+                <div class="result-card-header" data-bs-toggle="collapse" data-bs-target="#ocrResults">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-camera me-2"></i> OCR Text Extraction
+                        </h5>
+                        <i class="fas fa-chevron-down collapsible-icon"></i>
+                    </div>
+                </div>
+                <div id="ocrResults" class="collapse show">
+                    <div class="card-body">
+                        <p class="text-muted small mb-3">Text detected in property images</p>
+                        <ul class="list-unstyled">
+                            {% for snippet in location_data.multi_signal_scoring.evidence.image_snippets[:10] %}
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                {{ snippet }}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% if location_data.multi_signal_scoring.evidence.image_snippets|length > 10 %}
+                        <p class="text-muted small mt-2">... and {{ location_data.multi_signal_scoring.evidence.image_snippets|length - 10 }} more</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- NLP Results -->
+        {% if location_data.multi_signal_scoring and location_data.multi_signal_scoring.evidence and location_data.multi_signal_scoring.evidence.matched_text %}
+        <div class="col-lg-6">
+            <div class="result-card">
+                <div class="result-card-header" data-bs-toggle="collapse" data-bs-target="#nlpResults">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-font me-2"></i> NLP Text Analysis
+                        </h5>
+                        <i class="fas fa-chevron-down collapsible-icon"></i>
+                    </div>
+                </div>
+                <div id="nlpResults" class="collapse show">
+                    <div class="card-body">
+                        <p class="text-muted small mb-3">Location data from listing description</p>
+                        <ul class="list-unstyled">
+                            {% for text in location_data.multi_signal_scoring.evidence.matched_text[:10] %}
+                            <li class="mb-2">
+                                <i class="fas fa-map-marker-alt text-primary me-2"></i>
+                                {{ text }}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% if location_data.multi_signal_scoring.evidence.matched_text|length > 10 %}
+                        <p class="text-muted small mt-2">... and {{ location_data.multi_signal_scoring.evidence.matched_text|length - 10 }} more</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Visual Analysis Results -->
+        {% if location_data.visual_clues %}
+        <div class="col-lg-6">
+            <div class="result-card">
+                <div class="result-card-header" data-bs-toggle="collapse" data-bs-target="#visualResults">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-eye me-2"></i> Visual Analysis
+                        </h5>
+                        <i class="fas fa-chevron-down collapsible-icon"></i>
+                    </div>
+                </div>
+                <div id="visualResults" class="collapse">
+                    <div class="card-body">
+                        {% if location_data.visual_clues.visual_address_clues %}
+                        <h6 class="fw-semibold mb-2">Visual Clues</h6>
+                        <ul class="list-unstyled mb-3">
+                            {% for clue in location_data.visual_clues.visual_address_clues[:5] %}
+                            <li class="mb-1">
+                                <i class="fas fa-image text-info me-2"></i>
+                                {{ clue }}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% endif %}
+                        
+                        {% if location_data.visual_clues.landmarks %}
+                        <h6 class="fw-semibold mb-2">Landmarks</h6>
+                        <ul class="list-unstyled">
+                            {% for landmark in location_data.visual_clues.landmarks[:5] %}
+                            <li class="mb-1">
+                                <i class="fas fa-landmark text-warning me-2"></i>
+                                {{ landmark }}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% endif %}
+                        
+                        {% if location_data.visual_clues.confidence_score %}
+                        <div class="mt-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="small">Visual Confidence</span>
+                                <span class="small fw-semibold">{{ location_data.visual_clues.confidence_score }}%</span>
+                            </div>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar" role="progressbar" 
+                                     style="width: {{ location_data.visual_clues.confidence_score }}%; background: linear-gradient(90deg, #f093fb, #f5576c);">
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Real Estate Search Results -->
+        {% if real_estate_matches and (real_estate_matches.zillow_matches or real_estate_matches.realtor_matches) %}
+        <div class="col-lg-6">
+            <div class="result-card">
+                <div class="result-card-header" data-bs-toggle="collapse" data-bs-target="#realEstateResults">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-building me-2"></i> Real Estate Matches
+                        </h5>
+                        <i class="fas fa-chevron-down collapsible-icon"></i>
+                    </div>
+                </div>
+                <div id="realEstateResults" class="collapse">
+                    <div class="card-body">
+                        {% if real_estate_matches.zillow_matches %}
+                        <h6 class="fw-semibold mb-3">Zillow Results</h6>
+                        {% for match in real_estate_matches.zillow_matches[:2] %}
+                        <div class="p-3 bg-light rounded mb-2">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="fw-semibold">{{ match.address }}</div>
+                                    <div class="small text-muted">
+                                        {% if match.bedrooms %}{{ match.bedrooms }} bed{% endif %}
+                                        {% if match.bathrooms %} • {{ match.bathrooms }} bath{% endif %}
+                                        {% if match.square_feet %} • {{ match.square_feet }} sqft{% endif %}
+                                    </div>
+                                </div>
+                                <span class="badge bg-success">{{ (match.confidence_score * 100)|round|int }}%</span>
+                            </div>
+                            {% if match.listing_url %}
+                            <a href="{{ match.listing_url }}" target="_blank" class="btn btn-sm btn-outline-primary mt-2">
+                                View <i class="fas fa-external-link-alt ms-1"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                        {% endif %}
+                        
+                        {% if real_estate_matches.realtor_matches %}
+                        <h6 class="fw-semibold mb-3 mt-3">Realtor.com Results</h6>
+                        {% for match in real_estate_matches.realtor_matches[:2] %}
+                        <div class="p-3 bg-light rounded mb-2">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="fw-semibold">{{ match.address }}</div>
+                                    <div class="small text-muted">
+                                        {% if match.bedrooms %}{{ match.bedrooms }} bed{% endif %}
+                                        {% if match.bathrooms %} • {{ match.bathrooms }} bath{% endif %}
+                                        {% if match.square_feet %} • {{ match.square_feet }} sqft{% endif %}
+                                    </div>
+                                </div>
+                                <span class="badge bg-success">{{ (match.confidence_score * 100)|round|int }}%</span>
+                            </div>
+                            {% if match.listing_url %}
+                            <a href="{{ match.listing_url }}" target="_blank" class="btn btn-sm btn-outline-primary mt-2">
+                                View <i class="fas fa-external-link-alt ms-1"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Address Candidates Table -->
+    {% if location_data.multi_signal_scoring and location_data.multi_signal_scoring.all_candidates %}
+    <div class="result-card">
+        <div class="result-card-header" data-bs-toggle="collapse" data-bs-target="#candidatesTable">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-list-ol me-2"></i> All Address Candidates
+                </h5>
+                <i class="fas fa-chevron-down collapsible-icon"></i>
+            </div>
+        </div>
+        <div id="candidatesTable" class="collapse">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Address</th>
+                                <th>Score</th>
+                                <th>Confidence</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for candidate in location_data.multi_signal_scoring.all_candidates[:10] %}
+                            <tr {% if loop.first %}class="table-success"{% endif %}>
+                                <td>
+                                    {% if loop.first %}
+                                    <span class="badge bg-success">Selected</span>
+                                    {% else %}
+                                    #{{ loop.index }}
+                                    {% endif %}
+                                </td>
+                                <td>{{ candidate.address }}</td>
+                                <td>
+                                    <div class="progress" style="width: 100px; height: 20px;">
+                                        <div class="progress-bar" role="progressbar" 
+                                             style="width: {{ candidate.overall_score }}%; background: linear-gradient(90deg, #667eea, #764ba2);">
+                                            {{ candidate.overall_score|round|int }}%
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% set level_class = 'success' if candidate.confidence_level == 'Verified' else 'warning' if candidate.confidence_level == 'Approximate' else 'secondary' %}
+                                    <span class="badge bg-{{ level_class }}">{{ candidate.confidence_level }}</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% if location_data.multi_signal_scoring.all_candidates|length > 10 %}
+                    <p class="text-muted small text-center">Showing top 10 of {{ location_data.multi_signal_scoring.all_candidates|length }} candidates</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Original Listing Information -->
+    {% if search_results %}
+    <div class="result-card">
+        <div class="result-card-header" data-bs-toggle="collapse" data-bs-target="#listingInfo">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle me-2"></i> Original Listing Details
+                </h5>
+                <i class="fas fa-chevron-down collapsible-icon"></i>
+            </div>
+        </div>
+        <div id="listingInfo" class="collapse">
+            <div class="card-body">
+                <div class="row">
+                    {% if search_results.title %}
+                    <div class="col-md-12 mb-3">
+                        <h6 class="fw-semibold">{{ search_results.title }}</h6>
+                    </div>
+                    {% endif %}
+                    
+                    {% if search_results.property_type or search_results.room_type %}
+                    <div class="col-md-6">
+                        <p class="mb-2"><strong>Type:</strong> {{ search_results.property_type or search_results.room_type }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    {% if search_results.bedrooms %}
+                    <div class="col-md-6">
+                        <p class="mb-2"><strong>Bedrooms:</strong> {{ search_results.bedrooms }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    {% if search_results.bathrooms %}
+                    <div class="col-md-6">
+                        <p class="mb-2"><strong>Bathrooms:</strong> {{ search_results.bathrooms }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    {% if search_results.price %}
+                    <div class="col-md-6">
+                        <p class="mb-2"><strong>Price:</strong> {{ search_results.price }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    {% if search_results.host_name %}
+                    <div class="col-md-6">
+                        <p class="mb-2"><strong>Host:</strong> {{ search_results.host_name }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    {% if search_results.location %}
+                    <div class="col-md-6">
+                        <p class="mb-2"><strong>Listed Location:</strong> {{ search_results.location }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                {% if search_results.description %}
+                <div class="mt-3">
+                    <h6 class="fw-semibold">Description</h6>
+                    <p class="text-muted">{{ search_results.description[:500] }}{% if search_results.description|length > 500 %}...{% endif %}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Verification Tools Section -->
+    <div class="result-card">
+        <div class="result-card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-tools me-2"></i> Verification Tools
+            </h5>
+        </div>
+        <div class="card-body">
+            <p class="text-muted mb-3">Use these tools to independently verify the address:</p>
+            
+            <div class="row g-3">
+                {% if location_data.address %}
+                <div class="col-md-4">
+                    <div class="d-grid">
+                        <a href="https://www.google.com/search?q={{ location_data.address|urlencode }}+site:zillow.com" 
+                           target="_blank" class="btn btn-outline-primary">
+                            <i class="fas fa-search me-2"></i> Search on Zillow
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="d-grid">
+                        <a href="https://www.google.com/search?q={{ location_data.address|urlencode }}+site:realtor.com" 
+                           target="_blank" class="btn btn-outline-primary">
+                            <i class="fas fa-search me-2"></i> Search on Realtor.com
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if location_data.latitude and location_data.longitude %}
+                <div class="col-md-4">
+                    <div class="d-grid">
+                        <a href="https://www.google.com/maps/@{{ location_data.latitude }},{{ location_data.longitude }},3a,75y,0h,90t" 
+                           target="_blank" class="btn btn-outline-primary">
+                            <i class="fas fa-street-view me-2"></i> Street View
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Queue for Double Check -->
+            <div class="mt-4 p-3 bg-light rounded">
+                <h6 class="fw-semibold mb-2">
+                    <i class="fas fa-redo-alt text-warning me-2"></i> Need More Verification?
+                </h6>
+                <p class="text-muted small mb-3">Queue this listing for thorough batch verification with enhanced analysis.</p>
+                <form method="POST" action="{{ url_for('queue_double_check') }}">
+                    <input type="hidden" name="airbnb_url" value="{{ original_url }}">
+                    <input type="hidden" name="session_id" value="{{ session_id }}">
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-plus-circle me-2"></i> Queue for Double-Check
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript for Interactivity -->
+<script>
+// Copy address function
+function copyAddress() {
+    const address = "{{ location_data.address }}";
+    navigator.clipboard.writeText(address).then(function() {
+        const btn = document.getElementById('copy-address-btn');
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check me-2"></i> Copied!';
+        btn.classList.add('btn-success');
+        btn.classList.remove('btn-light');
+        
+        setTimeout(function() {
+            btn.innerHTML = originalHTML;
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-light');
+        }, 2000);
+    });
+}
+
+// Reset Deep Street View to original position
+function resetDeepStreetView() {
+    const iframe = document.getElementById('deep-street-view-iframe');
+    if (iframe) {
+        const lat = {{ location_data.latitude|default(0) }};
+        const lng = {{ location_data.longitude|default(0) }};
+        const apiKey = '{{ google_maps_api_key }}';
+        if (apiKey) {
+            iframe.src = `https://www.google.com/maps/embed/v1/streetview?key=${apiKey}&location=${lat},${lng}&heading=0&pitch=0&fov=90`;
+        }
+    }
+}
+
+// Initialize tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Handle collapsible icons
+    document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(function(element) {
+        element.addEventListener('click', function() {
+            const icon = this.querySelector('.collapsible-icon');
+            if (icon) {
+                this.classList.toggle('collapsed');
+            }
+        });
+    });
+    
+    // Initialize Leaflet map if needed
+    if (document.getElementById('map') && !document.querySelector('.img-fluid')) {
+        const mapElement = document.getElementById('map');
+        const lat = parseFloat(mapElement.dataset.lat);
+        const lng = parseFloat(mapElement.dataset.lng);
+        
+        const map = L.map('map').setView([lat, lng], 16);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+        
+        // Add verified location marker
+        L.marker([lat, lng], {
+            icon: L.divIcon({
+                className: 'custom-marker',
+                html: '<div style="background: #ff4444; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+                iconSize: [16, 16]
+            })
+        }).addTo(map).bindPopup('<strong>Verified Location</strong><br>{{ location_data.address }}');
+        
+        // Add original coordinates if different
+        {% if location_data.original_lat and location_data.original_lng and (location_data.original_lat != location_data.latitude or location_data.original_lng != location_data.longitude) %}
+        L.marker([{{ location_data.original_lat }}, {{ location_data.original_lng }}], {
+            icon: L.divIcon({
+                className: 'custom-marker',
+                html: '<div style="background: #4444ff; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+                iconSize: [16, 16]
+            })
+        }).addTo(map).bindPopup('<strong>Original Coordinates</strong>');
+        
+        // Draw line between points
+        L.polyline([[lat, lng], [{{ location_data.original_lat }}, {{ location_data.original_lng }}]], {
+            color: '#667eea',
+            weight: 2,
+            opacity: 0.5,
+            dashArray: '5, 10'
+        }).addTo(map);
+        {% endif %}
+    }
+    
+    // Animate progress bars on page load
+    setTimeout(function() {
+        document.querySelectorAll('.signal-fill').forEach(function(element) {
+            element.style.width = element.style.width;
+        });
+    }, 100);
+});
+</script>
+
+<!-- Leaflet CSS and JS for map -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+{% endblock %}

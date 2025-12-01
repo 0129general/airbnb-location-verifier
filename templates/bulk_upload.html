@@ -1,0 +1,346 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="hero-section">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-8 mx-auto text-center">
+                <h1 class="h3 mb-2">Bulk Airbnb Location Verification</h1>
+                <p class="mb-0 small">
+                    Upload a spreadsheet with multiple Airbnb URLs for batch processing
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="container">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <!-- File Upload Form -->
+            <div class="card location-card mb-4">
+                <div class="card-body">
+                    <h2 class="h4 mb-4">Upload Excel File with Airbnb URLs</h2>
+                    
+                    <div class="alert alert-warning mb-4">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Choose the right processing method for your file size:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>For files with <strong>fewer than 50 URLs</strong>, use "Standard Processing"</li>
+                            <li>For files with <strong>50-10,000 URLs</strong>, use "Large Batch Processing" <span class="badge bg-success text-white">New!</span></li>
+                        </ul>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card h-100">
+                                <div class="card-header bg-light">
+                                    <h4 class="h6 mb-0">Standard Processing</h4>
+                                </div>
+                                <div class="card-body">
+                                    <p class="small mb-3">Quick processing for smaller files. Results are immediately downloaded when complete.</p>
+                                    <form id="upload-form" action="{{ url_for('upload_excel') }}" method="post" enctype="multipart/form-data">
+                                        <div class="mb-3">
+                                            <div class="input-group">
+                                                <input type="file" class="form-control" id="excel-file" name="excel_file" accept=".xlsx,.xls" required>
+                                                <span class="input-group-text">
+                                                    <i class="fas fa-file-excel"></i>
+                                                </span>
+                                            </div>
+                                        </div>
+                                        
+                                        <button type="submit" id="submit-btn" class="btn btn-primary w-100">
+                                            <span id="loading-spinner" class="spinner-border spinner-border-sm d-none me-2" role="status" aria-hidden="true"></span>
+                                            Process (Small Files)
+                                        </button>
+                                    </form>
+                                </div>
+                                <div class="card-footer bg-light">
+                                    <span class="badge bg-info">Recommended for < 50 URLs</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="card h-100 border-success">
+                                <div class="card-header bg-success text-white">
+                                    <h4 class="h6 mb-0">Large Batch Processing <span class="badge bg-warning text-dark ms-2">New!</span></h4>
+                                </div>
+                                <div class="card-body">
+                                    <p class="small mb-3">Process thousands of URLs in the background. Monitor progress and download when ready.</p>
+                                    <form id="large-batch-form" action="{{ url_for('upload_large_batch') }}" method="post" enctype="multipart/form-data">
+                                        <div class="mb-3">
+                                            <div class="input-group">
+                                                <input type="file" class="form-control" id="large-batch-file" name="excel_file" accept=".xlsx,.xls" required>
+                                                <span class="input-group-text">
+                                                    <i class="fas fa-file-excel"></i>
+                                                </span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="safe-mode" name="safe_mode" value="true">
+                                                <label class="form-check-label" for="safe-mode">
+                                                    <span class="badge bg-warning text-dark">Safe Mode</span> 
+                                                    Use if experiencing network issues
+                                                </label>
+                                                <div class="form-text small">
+                                                    Safe mode skips actual Airbnb web scraping and uses approximate geocoded addresses.
+                                                    Enable this if you're experiencing timeouts or server errors.
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <button type="submit" id="large-batch-btn" class="btn btn-success w-100">
+                                            <span id="large-batch-spinner" class="spinner-border spinner-border-sm d-none me-2" role="status" aria-hidden="true"></span>
+                                            Process Large Batch
+                                        </button>
+                                    </form>
+                                </div>
+                                <div class="card-footer bg-light">
+                                    <span class="badge bg-success">Can handle 1,000s of URLs</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-center">
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-primary me-2">
+                            <i class="fas fa-arrow-left me-2"></i> Back to Single Lookup
+                        </a>
+                        <a href="{{ url_for('jobs_page') }}" class="btn btn-outline-success">
+                            <i class="fas fa-tasks me-2"></i> View Processing Jobs
+                        </a>
+                    </div>
+                    
+                    <!-- Processing Progress Alert (hidden by default) -->
+                    <div id="processing-alert" class="alert alert-primary mt-3 d-none">
+                        <div class="d-flex align-items-center">
+                            <div class="d-flex me-3">
+                                <div class="spinner-grow spinner-grow-sm text-primary me-1" role="status"></div>
+                                <div class="spinner-grow spinner-grow-sm text-primary me-1" role="status" style="animation-delay: 0.2s"></div>
+                                <div class="spinner-grow spinner-grow-sm text-primary" role="status" style="animation-delay: 0.4s"></div>
+                            </div>
+                            <strong>Processing multiple URLs in parallel...</strong>
+                        </div>
+                        <div class="progress mt-2" style="height: 5px;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                        </div>
+                        <p class="mb-0 mt-2 small">Your file is being processed with our high-speed parallel processing engine.</p>
+                        <p class="mb-0 small">The result will be automatically downloaded when complete. Please wait...</p>
+                    </div>
+                    
+                    <!-- Large Batch Processing Alert (hidden by default) -->
+                    <div id="large-batch-alert" class="alert alert-success mt-3 d-none">
+                        <div class="d-flex align-items-center">
+                            <div class="spinner-border text-success me-3" role="status"></div>
+                            <div>
+                                <strong>Large batch job started!</strong>
+                                <p class="mb-0 mt-1">Your file has been uploaded and processing has begun. You'll be redirected to the jobs page where you can monitor progress.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Instructions Section -->
+            <div class="card location-card mb-4">
+                <div class="card-header">
+                    <h3 class="h5 mb-0">How It Works</h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info mb-4">
+                        <i class="fas fa-info-circle me-2"></i> The bulk processor will automatically detect the column containing Airbnb URLs and add the extracted addresses in a new column.
+                    </div>
+                    
+                    {% if sample_file_exists %}
+                    <div class="text-center mb-4">
+                        <a href="{{ url_for('download_sample') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-download me-2"></i> Download Sample Excel File
+                        </a>
+                        <p class="text-muted small mt-2">Try our sample file with example Airbnb URLs</p>
+                    </div>
+                    {% endif %}
+                    
+                    <ol class="mb-4">
+                        <li class="mb-2">
+                            <strong>Prepare Your Excel File:</strong> Create a spreadsheet with a column containing Airbnb listing URLs.
+                        </li>
+                        <li class="mb-2">
+                            <strong>Upload the File:</strong> Select your Excel file (.xlsx or .xls format) using the form above.
+                        </li>
+                        <li class="mb-2">
+                            <strong>Process and Wait:</strong> Our system will process each URL and extract the address information.
+                        </li>
+                        <li class="mb-2">
+                            <strong>Download Results:</strong> When complete, a new Excel file will be downloaded with an "Extracted Address" column added.
+                        </li>
+                    </ol>
+                    
+                    <div class="alert alert-success">
+                        <i class="fas fa-bolt me-2"></i> 
+                        <strong>High-speed parallel processing:</strong> We now process multiple URLs simultaneously for much faster results. A batch of 20 URLs typically completes in just 10-15 seconds.
+                    </div>
+                    
+                    <div class="alert alert-info mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Batch processing limitations:</strong> Our Standard Processing can handle up to 50 URLs at once. 
+                        For performance reasons, the Large Batch Processing will process up to 50 URLs per batch, with a total limit of 10,000 URLs. 
+                        Larger files can be split into multiple batches.
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Example & Format Section -->
+            <div class="card location-card mb-4">
+                <div class="card-header">
+                    <h3 class="h5 mb-0">File Format Example</h3>
+                </div>
+                <div class="card-body">
+                    <p class="mb-3">Your Excel file should look something like this:</p>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>Airbnb URL</th>
+                                    <th>Property Name</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>https://www.airbnb.com/rooms/12345</td>
+                                    <td>Beach House</td>
+                                    <td>Vacation rental</td>
+                                </tr>
+                                <tr>
+                                    <td>https://www.airbnb.com/rooms/67890</td>
+                                    <td>Downtown Apartment</td>
+                                    <td>Business trip</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <p class="mt-3 mb-1">After processing, you'll receive a file with an added column:</p>
+                    
+                    <div class="table-responsive mt-3">
+                        <table class="table table-bordered">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>Airbnb URL</th>
+                                    <th>Property Name</th>
+                                    <th>Notes</th>
+                                    <th class="table-success">Extracted Address</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>https://www.airbnb.com/rooms/12345</td>
+                                    <td>Beach House</td>
+                                    <td>Vacation rental</td>
+                                    <td class="table-success">123 Ocean Blvd, Miami Beach, FL 33139</td>
+                                </tr>
+                                <tr>
+                                    <td>https://www.airbnb.com/rooms/67890</td>
+                                    <td>Downtown Apartment</td>
+                                    <td>Business trip</td>
+                                    <td class="table-success">456 Main St, New York, NY 10001</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Standard processing form
+    const standardForm = document.getElementById('upload-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const loadingSpinner = document.getElementById('loading-spinner');
+    const processingAlert = document.getElementById('processing-alert');
+    
+    if (standardForm) {
+        standardForm.addEventListener('submit', function() {
+            // Check if a valid Excel file is selected
+            const fileInput = document.getElementById('excel-file');
+            if (fileInput.files.length === 0) {
+                return false;
+            }
+            
+            const fileName = fileInput.files[0].name;
+            if (!fileName.endsWith('.xlsx') && !fileName.endsWith('.xls')) {
+                return false;
+            }
+            
+            // Update button state
+            submitBtn.disabled = true;
+            loadingSpinner.classList.remove('d-none');
+            submitBtn.innerHTML = loadingSpinner.outerHTML + ' Processing...';
+            
+            // Show processing alert
+            processingAlert.classList.remove('d-none');
+            
+            // Scroll to the processing alert
+            setTimeout(function() {
+                processingAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 500);
+            
+            return true;
+        });
+    }
+    
+    // Large batch processing form
+    const largeBatchForm = document.getElementById('large-batch-form');
+    const largeBatchBtn = document.getElementById('large-batch-btn');
+    const largeBatchSpinner = document.getElementById('large-batch-spinner');
+    const largeBatchAlert = document.getElementById('large-batch-alert');
+    
+    if (largeBatchForm) {
+        largeBatchForm.addEventListener('submit', function() {
+            // Check if a valid Excel file is selected
+            const fileInput = document.getElementById('large-batch-file');
+            if (fileInput.files.length === 0) {
+                return false;
+            }
+            
+            const fileName = fileInput.files[0].name;
+            if (!fileName.endsWith('.xlsx') && !fileName.endsWith('.xls')) {
+                return false;
+            }
+            
+            // Update button state
+            largeBatchBtn.disabled = true;
+            largeBatchSpinner.classList.remove('d-none');
+            largeBatchBtn.innerHTML = largeBatchSpinner.outerHTML + ' Starting Job...';
+            
+            // Show large batch alert
+            largeBatchAlert.classList.remove('d-none');
+            
+            // Scroll to the alert
+            setTimeout(function() {
+                largeBatchAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 500);
+            
+            return true;
+        });
+    }
+    
+    // Update the large batch processing info text
+    const batchInfoText = document.querySelector('.alert-info.mb-0');
+    if (batchInfoText) {
+        batchInfoText.innerHTML = `
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Large Batch Processing:</strong> Our new system can efficiently process up to 10,000 URLs at once. 
+            Perfect for real estate professionals with large datasets.
+        `;
+    }
+});
+</script>
+{% endblock %}

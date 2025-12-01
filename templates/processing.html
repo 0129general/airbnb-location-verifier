@@ -1,0 +1,252 @@
+{% extends "layout.html" %}
+
+{% block title %}Processing - Airbnb Geoscanner{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-cog fa-spin"></i> Advanced Analysis in Progress
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <h5>Processing Location Data</h5>
+                        <p class="text-muted">
+                            Our advanced multi-signal analysis is examining the property photos, descriptions, and location data to extract the precise address.
+                            This process may take 30-60 seconds for optimal accuracy.
+                        </p>
+                    </div>
+
+                    <!-- Progress Information -->
+                    <div class="alert alert-info">
+                        <div class="d-flex align-items-center">
+                            <div class="spinner-border spinner-border-sm me-2" role="status">
+                                <span class="visually-hidden">Processing...</span>
+                            </div>
+                            <div>
+                                <strong>Current Stage:</strong> 
+                                <span id="progress-stage">{{ progress.stage | default('Processing') }}</span>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <small class="text-muted" id="progress-message">
+                                {{ progress.message | default('Performing advanced analysis...') }}
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="progress mb-3" style="height: 25px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" 
+                             role="progressbar" 
+                             id="progress-bar"
+                             style="width: {% if progress.stage == 'initial' %}10{% elif progress.stage == 'vision_analysis' %}40{% elif progress.stage == 'street_view' %}70{% elif progress.stage == 'scoring' %}90{% else %}50{% endif %}%"
+                             aria-valuenow="{% if progress.stage == 'initial' %}10{% elif progress.stage == 'vision_analysis' %}40{% elif progress.stage == 'street_view' %}70{% elif progress.stage == 'scoring' %}90{% else %}50{% endif %}"
+                             aria-valuemin="0" 
+                             aria-valuemax="100">
+                        </div>
+                    </div>
+
+                    <!-- Progressive Loading Status -->
+                    <div class="card bg-light mb-3">
+                        <div class="card-body">
+                            <h6 class="card-subtitle mb-2 text-muted">Progressive Loading Status</h6>
+                            <div class="mb-2" id="quick-results-status">
+                                <i class="fas fa-circle-notch fa-spin text-primary"></i> Quick analysis (5s timeout)...
+                            </div>
+                            <div class="mb-2" id="detailed-results-status">
+                                <i class="far fa-circle text-muted"></i> Detailed analysis (30s timeout) pending
+                            </div>
+                            <div class="mb-2" id="current-address">
+                                <!-- Will be updated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Basic Location Info -->
+                    {% if location_data %}
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h6 class="card-subtitle mb-2 text-muted">Basic Information Extracted</h6>
+                            <ul class="list-unstyled mb-0">
+                                {% if location_data.title %}
+                                <li><strong>Property:</strong> {{ location_data.title }}</li>
+                                {% endif %}
+                                {% if location_data.city %}
+                                <li><strong>City:</strong> {{ location_data.city }}{% if location_data.state %}, {{ location_data.state }}{% endif %}</li>
+                                {% endif %}
+                                {% if location_data.address %}
+                                <li><strong>Initial Address:</strong> {{ location_data.address }}</li>
+                                {% endif %}
+                                <li class="mt-2 text-muted">
+                                    <small><i class="fas fa-info-circle"></i> Advanced OCR and AI vision analysis is being performed to extract the exact street address...</small>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Processing Steps -->
+                    <div class="mt-4">
+                        <h6>Analysis Pipeline:</h6>
+                        <div class="list-group list-group-flush">
+                            <div class="list-group-item d-flex justify-content-between align-items-center" id="step-initial">
+                                <div>
+                                    <i class="fas fa-check-circle text-success me-2"></i>
+                                    <span>Basic data extraction</span>
+                                </div>
+                                <small class="text-success">Complete</small>
+                            </div>
+                            <div class="list-group-item d-flex justify-content-between align-items-center" id="step-vision">
+                                <div>
+                                    <i class="fas fa-circle-notch fa-spin text-primary me-2" id="icon-vision"></i>
+                                    <span>AI vision analysis (OCR detection)</span>
+                                </div>
+                                <small class="text-muted" id="status-vision">Processing...</small>
+                            </div>
+                            <div class="list-group-item d-flex justify-content-between align-items-center" id="step-street">
+                                <div>
+                                    <i class="far fa-circle text-muted me-2" id="icon-street"></i>
+                                    <span>Street View verification</span>
+                                </div>
+                                <small class="text-muted" id="status-street">Pending</small>
+                            </div>
+                            <div class="list-group-item d-flex justify-content-between align-items-center" id="step-scoring">
+                                <div>
+                                    <i class="far fa-circle text-muted me-2" id="icon-scoring"></i>
+                                    <span>Multi-signal scoring</span>
+                                </div>
+                                <small class="text-muted" id="status-scoring">Pending</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-refresh every 2 seconds
+let refreshCount = 0;
+const maxRefreshes = 60; // Stop after 2 minutes
+
+function checkStatus() {
+    refreshCount++;
+    if (refreshCount >= maxRefreshes) {
+        // If taking too long, show a message
+        document.getElementById('progress-message').textContent = 'Processing is taking longer than expected. Please wait...';
+        return;
+    }
+    
+    // Check status via AJAX using the new progressive loading endpoint
+    fetch(`/api/processing-status/{{ session_id }}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'completed') {
+                // Processing complete, reload page to show results
+                window.location.reload();
+            } else if (data.status === 'error') {
+                // Error occurred, redirect to home with error message
+                window.location.href = '/';
+            } else if (data.status === 'processing' || data.status === 'pending') {
+                // Still processing, update UI
+                if (data.progress) {
+                    updateProgress(data.progress);
+                }
+                
+                // Update quick results status
+                if (data.has_quick_results) {
+                    document.getElementById('quick-results-status').innerHTML = 
+                        '<i class="fas fa-check-circle text-success"></i> Quick analysis complete';
+                }
+                if (data.has_detailed_results) {
+                    document.getElementById('detailed-results-status').innerHTML = 
+                        '<i class="fas fa-check-circle text-success"></i> Detailed analysis complete';
+                }
+                if (data.current_address) {
+                    document.getElementById('current-address').innerHTML = 
+                        `<strong>Current Address:</strong> ${data.current_address} (Confidence: ${data.confidence_score || 0}%)`;
+                }
+                
+                // Continue checking
+                setTimeout(checkStatus, 2000);
+            }
+        })
+        .catch(error => {
+            console.error('Error checking status:', error);
+            // Continue checking even on error
+            setTimeout(checkStatus, 2000);
+        });
+}
+
+function updateProgress(progress) {
+    // Update stage and message
+    document.getElementById('progress-stage').textContent = progress.stage || 'Processing';
+    document.getElementById('progress-message').textContent = progress.message || 'Performing advanced analysis...';
+    
+    // Update progress bar
+    let percentage = 10;
+    if (progress.stage === 'vision_analysis') {
+        percentage = 40;
+        updateStepStatus('vision', 'processing');
+    } else if (progress.stage === 'street_view') {
+        percentage = 70;
+        updateStepStatus('vision', 'complete');
+        updateStepStatus('street', 'processing');
+    } else if (progress.stage === 'scoring') {
+        percentage = 90;
+        updateStepStatus('vision', 'complete');
+        updateStepStatus('street', 'complete');
+        updateStepStatus('scoring', 'processing');
+    } else if (progress.stage === 'completed') {
+        percentage = 100;
+        updateStepStatus('vision', 'complete');
+        updateStepStatus('street', 'complete');
+        updateStepStatus('scoring', 'complete');
+    }
+    
+    const progressBar = document.getElementById('progress-bar');
+    progressBar.style.width = percentage + '%';
+    progressBar.setAttribute('aria-valuenow', percentage);
+}
+
+function updateStepStatus(step, status) {
+    const icon = document.getElementById('icon-' + step);
+    const statusText = document.getElementById('status-' + step);
+    
+    if (status === 'complete') {
+        icon.className = 'fas fa-check-circle text-success me-2';
+        statusText.className = 'text-success';
+        statusText.textContent = 'Complete';
+    } else if (status === 'processing') {
+        icon.className = 'fas fa-circle-notch fa-spin text-primary me-2';
+        statusText.className = 'text-primary';
+        statusText.textContent = 'Processing...';
+    }
+}
+
+// Start checking status after page loads
+setTimeout(checkStatus, 2000);
+</script>
+
+<style>
+.progress {
+    background-color: #e9ecef;
+}
+
+.list-group-item {
+    background-color: transparent;
+    border-color: #dee2e6;
+}
+
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+}
+</style>
+{% endblock %}

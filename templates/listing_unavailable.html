@@ -1,0 +1,62 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <!-- Listing Unavailable Card -->
+            <div class="card location-card mb-4 border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h2 class="h4 mb-0">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        Listing No Longer Available
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger">
+                        <i class="fas fa-times-circle me-2"></i>
+                        <strong>This Airbnb listing is no longer active or has been removed.</strong>
+                    </div>
+                    
+                    <p class="mb-4">
+                        The requested listing at <code>{{ airbnb_url }}</code> could not be found. 
+                        This typically means:
+                    </p>
+                    
+                    <ul class="mb-4">
+                        <li>The property is no longer available for booking</li>
+                        <li>The listing has been removed by the host</li>
+                        <li>The URL may be incorrect or outdated</li>
+                    </ul>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                        <a href="/" class="btn btn-primary">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            Try Another Listing
+                        </a>
+                        <a href="/queue_dashboard" class="btn btn-outline-secondary">
+                            <i class="fas fa-list me-2"></i>
+                            View Queue Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Queue Status -->
+            <div class="card location-card">
+                <div class="card-header">
+                    <h3 class="h6 mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        Queue Status
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-0">
+                        Skip this listing and continue with other properties in your queue.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
